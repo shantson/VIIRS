@@ -1,5 +1,5 @@
 
-
+#this is a test
 #make gif
 # in terminal: 
 #convert -delay 80 /Users/stijnhantson/Documents/projects/VIIRS_ros/output/*.png /Users/stijnhantson/Documents/projects/VIIRS_ros/test/test1.gif
