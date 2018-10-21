@@ -374,9 +374,9 @@ if (length(pre_det)<4){
 
   }else{
 
-y= pre_det$lat
-x=pre_det$lon
-pol3 = point2pol(x,y,pre_det,TA)
+#y= pre_det$lat
+#x=pre_det$lon
+#pol3 = point2pol(x,y,pre_det,TA)
 
 #det_new$dist = apply(gDistance(det_new, pol3,byid=TRUE),2,min)
 det_new$dist = apply(gDistance(det_new, l2,byid=TRUE),2,min)
@@ -429,7 +429,7 @@ l<-c(l,pol2)     # include new polygon in list of polygons
       l2=rbind(l2,l[[tr]])
     }
   }
-  l2<- unionSpatialPolygons(l2, l2$YYYYMMDD) 
+  l2<- unionSpatialPolygons(l2, l2$DOY) 
    }
 }
 # pts_in$Col <- rbPal(100)[as.numeric(cut(pts_in$YYYYMMDD,breaks = 20))]
@@ -442,6 +442,8 @@ for (tr in 2:le){
 l2=rbind(l2,l[[tr]])
 }
 }
+l2<- unionSpatialPolygons(l2, l2$DOY) 
+
 writeOGR(l2, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_annual",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
 writeOGR(ros, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_ros_annual",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
 
