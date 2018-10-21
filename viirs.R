@@ -1,5 +1,5 @@
 
-#this is a test
+
 #make gif
 # in terminal: 
 #convert -delay 80 /Users/stijnhantson/Documents/projects/VIIRS_ros/output/*.png /Users/stijnhantson/Documents/projects/VIIRS_ros/test/test1.gif
@@ -14,6 +14,7 @@ library(geosphere)
 library(foreach)
 library(doParallel)
 library(png)
+library(maptools)
 
 sep_dis = 1500                    #distance in m to seprate ignitions
 plot_gif = F                      # whether you want to output the png for each timestep
@@ -377,7 +378,8 @@ y= pre_det$lat
 x=pre_det$lon
 pol3 = point2pol(x,y,pre_det,TA)
 
-det_new$dist = apply(gDistance(det_new, pol3,byid=TRUE),2,min)
+#det_new$dist = apply(gDistance(det_new, pol3,byid=TRUE),2,min)
+det_new$dist = apply(gDistance(det_new, l2,byid=TRUE),2,min)
 det_new$ros = det_new$dist/((maxdoy - pre_maxdoy)*24)
 det_new$pre_date = pre_maxdoy
 
@@ -416,9 +418,18 @@ pol2$DOY = maxdoy
 pol2$YYYYMMDD = maxdate
 pol2$HHMM = maxhour
 
-l<-c(l,pol2)
+l<-c(l,pol2)     # include new polygon in list of polygons
 
-}}}}}
+
+  }}}}}
+  le = length(l)          #make polygon file from all polygons after timeset is over to be used as pre-timestep reference
+  l2=l[[1]]
+  if (le > 1){
+    for (tr in 2:le){
+      l2=rbind(l2,l[[tr]])
+    }
+  }
+  l2<- unionSpatialPolygons(l2, l2$YYYYMMDD) 
    }
 }
 # pts_in$Col <- rbPal(100)[as.numeric(cut(pts_in$YYYYMMDD,breaks = 20))]
