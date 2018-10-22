@@ -1,5 +1,4 @@
 
-
 library(raster)
 
 x <- shapefile('/Users/stijnhantson/Documents/projects/VIIRS_ros/output/2015_ROUGH.shp')
