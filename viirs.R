@@ -153,6 +153,7 @@ detections = sort(unique(pts_in$DOY))
 len1=length(detections)
 
 rrrr=0
+for (len1>1){
 for (detr in 1:(len1-1)){
   if( detections[detr+1]-detections[detr] > 0.3){
     rrrr[detr] = detections[detr]
@@ -163,6 +164,7 @@ for (detr in 1:(len1-1)){
 rrrr[len1] = detections[len1]
 detections = sort(unique(rrrr))
 len1=length(detections)
+}
 rrrr=0
 dddd =0
 if (only_night == T){            #only slect midnight detections
