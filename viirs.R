@@ -48,7 +48,7 @@ point2pol = function(x,y,da,pro){     # function which converts VIIRS points to 
     cutg <- order.chull - E(order.chull)[1]
   ends <- names(which(degree(cutg) == 1))
   if (is.na(ends[1])){
-#    print("trr")
+    print("trr")
     al=al+0.005
   }else if (!is.connected(order.chull)) {
  #     print("trr")
@@ -140,6 +140,9 @@ fire1 = gBuffer(fire,width = 750) #extract all VIIRS points within a 750m buffer
 #extract only VIIRS data between incidence and containment data +-1
 ign = (as.Date(fire$ALARM_DATE))-1
 sup = (as.Date(fire$CONT_DATE))+1
+if (is.na(ign)){
+  ign = sup - 90
+}
 pts_in = pts_in[pts_in$dat > ign,]
 pts_in = pts_in[pts_in$dat < sup,]
 
@@ -153,7 +156,7 @@ detections = sort(unique(pts_in$DOY))
 len1=length(detections)
 
 rrrr=0
-for (len1>1){
+if (len1>1){
 for (detr in 1:(len1-1)){
   if( detections[detr+1]-detections[detr] > 0.3){
     rrrr[detr] = detections[detr]
@@ -180,6 +183,8 @@ fir = mod1
 pts_in$dist = NA
 pts_in$ros = NA
 pts_in$pre_date = NA
+pts_in$prelon = NA
+pts_in$prelat = NA
 ros = pts_in[0,]
 sp=1
 
@@ -284,7 +289,8 @@ if  (length(det1) == length(det)){  #if all VIIRS points are within 3km from the
 
  
   ign=1
-  for (ign in 1:nr_ign){  #loop trough each seperate perimeter
+  for (ign in 1:nr_ign){   #loop trough each seperate perimeter
+    print(ign)
     if (ign == 1){
       det = det1
     }else if (ign == 2){
@@ -294,7 +300,7 @@ if  (length(det1) == length(det)){  #if all VIIRS points are within 3km from the
     }else if (ign == 4){
       det=det4    
       }
-
+#print(det)
     len2 = length(unique(det$DOY))
  uni2 = sort(unique(det$DOY))
   rrrr2=0
@@ -385,9 +391,17 @@ det_new$dist = apply(gDistance(det_new, l2,byid=TRUE),2,min)
 det_new$ros = det_new$dist/((maxdoy - pre_maxdoy)*24)
 det_new$pre_date = pre_maxdoy
 
-#dist2Line(x,pol3)      #gives you intersection point
+print(det_new$dist)
 
-ros = rbind(ros, det_new)
+pol1 = spTransform(l2,lonlat)
+det_new2=spTransform(det_new,lonlat)
+pr=dist2Line(det_new2,pol1)      #gives you intersection point
+
+det_new$prelon = pr$lon
+det_new$prelat = pr$lat
+
+#det_new$prelon
+#det_new$prelat
 
 if (plot_gif == T){
 lines(pol2)   #plot lines for each timestep
@@ -422,7 +436,7 @@ pol2$HHMM = maxhour
 
 l<-c(l,pol2)     # include new polygon in list of polygons
 
-
+#print(l)
   }}}}}
   le = length(l)          #make polygon file from all polygons after timeset is over to be used as pre-timestep reference
   l2=l[[1]]
@@ -431,7 +445,7 @@ l<-c(l,pol2)     # include new polygon in list of polygons
       l2=rbind(l2,l[[tr]])
     }
   }
-  l2<- unionSpatialPolygons(l2, l2$DOY) 
+# print(l2)
    }
 }
 # pts_in$Col <- rbPal(100)[as.numeric(cut(pts_in$YYYYMMDD,breaks = 20))]
@@ -444,7 +458,8 @@ for (tr in 2:le){
 l2=rbind(l2,l[[tr]])
 }
 }
-l2<- unionSpatialPolygons(l2, l2$DOY) 
+
+l2<-aggregate(l2, c("DOY","YYYYMMDD","HHMM")) 
 
 writeOGR(l2, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_annual",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
 writeOGR(ros, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_ros_annual",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
