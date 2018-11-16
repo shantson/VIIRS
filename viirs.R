@@ -48,7 +48,7 @@ point2pol = function(x,y,da,pro){     # function which converts VIIRS points to 
     cutg <- order.chull - E(order.chull)[1]
   ends <- names(which(degree(cutg) == 1))
   if (is.na(ends[1])){
-    print("trr")
+#    print("trr")
     al=al+0.005
   }else if (!is.connected(order.chull)) {
  #     print("trr")
@@ -167,7 +167,7 @@ for (detr in 1:(len1-1)){
 rrrr[len1] = detections[len1]
 detections = sort(unique(rrrr))
 len1=length(detections)
-}
+
 rrrr=0
 dddd =0
 if (only_night == T){            #only slect midnight detections
@@ -198,14 +198,14 @@ dev.copy(which = 4)
 dev.off()
 }
 
-if (len1 <2){   #we only consider fires wiht more than 3 timesteps
+if (len1 <2){   #we only consider fires wiht more than 1 timestep
   
 }else{
 sp=1
 l<-c()  
   while (sp < len1+1){        #move trough each timestep with the VIIRS data
     #list to save spatial polygon data in
- print(sp)
+# print(sp)
     det_day =  pts_in[pts_in$DOY <= detections[sp] & pts_in$DOY > (detections[sp] - time_dif),]  #VIIRS points at timestep
   det = pts_in[pts_in$DOY <= detections[sp],]         #VIIRS points before and at timestep
    pre_det = pts_in[pts_in$DOY < (detections[sp] - time_dif),]     #VIIRS points before timestep
@@ -290,7 +290,7 @@ if  (length(det1) == length(det)){  #if all VIIRS points are within 3km from the
  
   ign=1
   for (ign in 1:nr_ign){   #loop trough each seperate perimeter
-    print(ign)
+#    print(ign)
     if (ign == 1){
       det = det1
     }else if (ign == 2){
@@ -331,8 +331,8 @@ if  (length(det1) == length(det)){  #if all VIIRS points are within 3km from the
  
   if (uni != 0){ # jump to the end in case the first detection is not a nighttime one. 
   
-  if (uni == 1 || length(det)<3){ # sp ==2 indicates first timestep or when ther eare less than 3 datapoints
-    if (uni == 1 & length(det)>3 ){
+  if (uni == 1 || length(det)<4){ # sp ==2 indicates first timestep or when ther eare less than 3 datapoints
+    if (uni == 1 & length(det)>4 ){
       y= det$lat
       x=det$lon
       pol2 = point2pol(x,y,det,TA)
@@ -341,7 +341,23 @@ if  (length(det1) == length(det)){  #if all VIIRS points are within 3km from the
       pol2$HHMM = det$HHMM[1]
       
        l<-c(l,pol2)
-    } 
+    }else{
+      y= det$lat
+      x=det$lon
+      
+      mean_x = mean(x)
+      mean_y = mean(y)
+      df = data.frame(a = 1)
+      center = SpatialPointsDataFrame(cbind(mean_x,mean_y),df,proj4string=lonlat)
+      center= spTransform(center,TA)
+    pol2 <- gBuffer( center, width=1, byid=TRUE )
+      
+      pol2$DOY = det$DOY[1]
+      pol2$YYYYMMDD = det$YYYYMMDD[1]
+      pol2$HHMM = det$HHMM[1]
+      pol2=pol2[,-1]
+      l<-c(l,pol2)
+    }
     
  }else{
   
@@ -366,21 +382,26 @@ maxdoy = max(det_day$DOY)
 
 if (length(det_new) > 0){ #if there are no new thermal anomalies on the fire edge
 
-if (length(pre_det)<4){
-  y= pre_det$lat
-  x=pre_det$lon
-  mean_x = mean(x)
-  mean_y = mean(y)
-  df = data.frame(a = 1)
-  center = SpatialPointsDataFrame(cbind(mean_x,mean_y),df,proj4string=lonlat)
-  center= spTransform(center,TA)
+#if (length(pre_det)<4){
+#  y= pre_det$lat
+#  x=pre_det$lon
+#  mean_x = mean(x)
+#  mean_y = mean(y)
+#  df = data.frame(a = 1)
+#  center = SpatialPointsDataFrame(cbind(mean_x,mean_y),df,proj4string=lonlat)
+#  center= spTransform(center,TA)
  
-   det_new$dist = apply(gDistance(det_new, center,byid=TRUE),2,min)
-  det_new$ros = det_new$dist/(( detections[sp-1] - detections[sp-2])*24)
-  pts_in$pre_date = pre_det$DOY[1]
-  ros = rbind(ros, det_new)
+#   det_new$dist = apply(gDistance(det_new, center,byid=TRUE),2,min)
+#  det_new$ros = det_new$dist/(( detections[sp-1] - detections[sp-2])*24)
+#  pts_in$pre_date = pre_det$DOY[1]
+ 
+#   pol1 = spTransform(center,lonlat)
+#  det_new$prelon = xmin(pol1)
+#  det_new$prelat = ymin(pol1)
+#  
+#  ros = rbind(ros, det_new)
 
-  }else{
+# }else{
 
 #y= pre_det$lat
 #x=pre_det$lon
@@ -391,17 +412,16 @@ det_new$dist = apply(gDistance(det_new, l2,byid=TRUE),2,min)
 det_new$ros = det_new$dist/((maxdoy - pre_maxdoy)*24)
 det_new$pre_date = pre_maxdoy
 
-print(det_new$dist)
+#print(det_new$dist)
 
 pol1 = spTransform(l2,lonlat)
 det_new2=spTransform(det_new,lonlat)
-pr=dist2Line(det_new2,pol1)      #gives you intersection point
+pr=as.data.frame(dist2Line(det_new2,pol1))     #gives you intersection point
 
 det_new$prelon = pr$lon
 det_new$prelat = pr$lat
 
-#det_new$prelon
-#det_new$prelat
+ros = rbind(ros, det_new)
 
 if (plot_gif == T){
 lines(pol2)   #plot lines for each timestep
@@ -437,7 +457,7 @@ pol2$HHMM = maxhour
 l<-c(l,pol2)     # include new polygon in list of polygons
 
 #print(l)
-  }}}}}
+  }}}}#}
   le = length(l)          #make polygon file from all polygons after timeset is over to be used as pre-timestep reference
   l2=l[[1]]
   if (le > 1){
@@ -447,7 +467,7 @@ l<-c(l,pol2)     # include new polygon in list of polygons
   }
 # print(l2)
    }
-}
+
 # pts_in$Col <- rbPal(100)[as.numeric(cut(pts_in$YYYYMMDD,breaks = 20))]
 # pts_in$Col <- rbPal(100)[as.numeric(cut(pts_in$sample ,breaks = 100))]
 # pts_in$Col <- rbPal(100)[as.numeric(cut(pts_in$pixarea ,breaks = 100))]
@@ -461,9 +481,9 @@ l2=rbind(l2,l[[tr]])
 
 l2<-aggregate(l2, c("DOY","YYYYMMDD","HHMM")) 
 
-writeOGR(l2, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_annual",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
-writeOGR(ros, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_ros_annual",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
-
+writeOGR(l2, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_daily",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
+writeOGR(ros, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_ros_daily",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
+}}
 #if (!is.na(ros$ros[1]) & length(ros) >1){
 # ros$Col <- rbPal(100)[as.numeric(cut(ros$ros,breaks = 100))]
 ##plot(fire)
