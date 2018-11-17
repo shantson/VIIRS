@@ -28,6 +28,7 @@ out_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/2012/"
 mod = raster("/Users/stijnhantson/Documents/data/MCD64_v6/Win03/2000/MCD64monthly.A2000336.Win03.006.burndate.tif")
 viirs_dir="/Users/stijnhantson/Documents/data/VIIRS/global_archive"
 shape1 <- shapefile("/Users/stijnhantson/Documents/projects/VIIRS_ros/2012_perimeters_dd83/2012_perimeters_dd83.shp⁩") #readin FRAP fire perimeter data
+shape1 <- shapefile("/Users/stijnhantson/Documents/projects/VIIRS_ros/2012_perimeters_dd83/test.shp⁩") #readin FRAP fire perimeter data
 
 
 
@@ -136,7 +137,8 @@ year=2016
 
   if (maxsize > 10000){
   if (clgeo_IsValid(fire)==FALSE){
-   fire = clgeo_CleanByPolygonation.SpatialPolygons(fire)
+  # fire = clgeo_CleanByPolygonation.SpatialPolygons(fire)
+    fire = gBuffer(fire, byid=TRUE, width=0)
   }
   
      fire1 <-aggregate(fire) 
@@ -339,8 +341,10 @@ year=2016
             
             if (uni == 1 || length(det)<4){ # sp ==2 indicates first timestep or when ther eare less than 3 datapoints
               if (uni == 1 & length(det)>4 ){
-                y= det$lat
-                x=det$lon
+               xy=as.data.frame(det[,4:5])
+               xy=unique(xy)
+                y= xy$lat
+                x=xy$lon
                 pol2 = point2pol(x,y,det,TA)
                 pol2$DOY = det$DOY[1]
                 pol2$YYYYMMDD = det$YYYYMMDD[1]
@@ -367,8 +371,10 @@ year=2016
               
             }else{
               
-              y= det$lat
-              x=det$lon
+              xy=as.data.frame(det[,4:5])
+              xy=unique(xy)
+              y= xy$lat
+              x=xy$lon
               pol2 = point2pol(x,y,det,TA)
               buf_pol2 =  gBuffer(pol2,width = -100)
               
