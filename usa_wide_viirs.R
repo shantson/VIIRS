@@ -28,7 +28,7 @@ out_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/2012/"
 mod = raster("/Users/stijnhantson/Documents/data/MCD64_v6/Win03/2000/MCD64monthly.A2000336.Win03.006.burndate.tif")
 viirs_dir="/Users/stijnhantson/Documents/data/VIIRS/global_archive"
 shape1 <- shapefile("/Users/stijnhantson/Documents/projects/VIIRS_ros/2012_perimeters_dd83/2012_perimeters_dd83.shp⁩") #readin FRAP fire perimeter data
-shape1 <- shapefile("/Users/stijnhantson/Documents/projects/VIIRS_ros/2012_perimeters_dd83/test.shp⁩") #readin FRAP fire perimeter data
+#shape1 <- shapefile("/Users/stijnhantson/Documents/projects/VIIRS_ros/2012_perimeters_dd83/test.shp⁩") #readin FRAP fire perimeter data
 
 
 
@@ -85,7 +85,7 @@ TA <- CRS("+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 
 #mod1[] = NA
 sp=1
 
-year=2016
+year=2012
 #cl       <- makeCluster(UseCores)
 #registerDoParallel(cl)
 
@@ -114,6 +114,10 @@ year=2016
   dat_v$FIRE_NUM=1
   dat_v=dat_v[as.character(dat_v$conf) != "     low",]
   dat_v=dat_v[dat_v$pixarea < 0.25,]
+
+  xy = dat_v[,4:5]
+
+ dat_v=dat_v[!duplicated(xy),]
   x=dat_v$lon
   y=dat_v$lat
   po2=SpatialPointsDataFrame(cbind(x,y),dat_v,proj4string=lonlat)
@@ -127,15 +131,17 @@ year=2016
   nr_fire = 1
   firesnames = unique(shape2$fire_num)
   p=1
-  
+ td=1
   #foreach(nr_fire=1:length(shape2),.packages=c("sp","rgeos","alphahull","geosphere","igraph","png","rgdal","raster")) %dopar% {
   
- for (nr_fire in 27:length(firesnames)){  # perform analysis for each fire
+ for (nr_fire in 1:length(firesnames)){  # perform analysis for each fire
     #subset VIIRS data spatialy and temporaly
     fire=subset(shape2, fire_num == firesnames[nr_fire])
     maxsize = max(fire$acres)
 
   if (maxsize > 10000){
+    td=td+1
+    print(td)
   if (clgeo_IsValid(fire)==FALSE){
   # fire = clgeo_CleanByPolygonation.SpatialPolygons(fire)
     fire = gBuffer(fire, byid=TRUE, width=0)
@@ -145,6 +151,7 @@ year=2016
     
     fire1 = gBuffer(fire1,width = 750) #extract all VIIRS points within a 750m buffer arround the perimeter
     pts_in = po2[!is.na(over(po2,as(fire1,"SpatialPolygons"))),]
+    print(length(pts_in$YYYYMMDD))
     #pts_in$dat = as.Date(as.character(pts_in$YYYYMMDD), format= "%Y%m%d")
     #extract only VIIRS data between incidence and containment data +-1
     ign = (as.Date(min(fire$date_)))-14
@@ -213,7 +220,8 @@ year=2016
       l<-c()  
       while (sp < len1+1){        #move trough each timestep with the VIIRS data
         #list to save spatial polygon data in
-#        print(sp)
+        print("sp")
+       print(sp)
         det_day =  pts_in[pts_in$DOY <= detections[sp] & pts_in$DOY > (detections[sp] - time_dif),]  #VIIRS points at timestep
         det = pts_in[pts_in$DOY <= detections[sp],]         #VIIRS points before and at timestep
         pre_det = pts_in[pts_in$DOY < (detections[sp] - time_dif),]     #VIIRS points before timestep
@@ -298,7 +306,8 @@ year=2016
         
         ign=1
         for (ign in 1:nr_ign){   #loop trough each seperate perimeter
- #         print(ign)
+          print("ign")
+          print(ign)
           if (ign == 1){
             det = det1
           }else if (ign == 2){
@@ -308,7 +317,7 @@ year=2016
           }else if (ign == 4){
             det=det4    
           }
-          #print(det)
+
           len2 = length(unique(det$DOY))
           uni2 = sort(unique(det$DOY))
           rrrr2=0
@@ -341,10 +350,10 @@ year=2016
             
             if (uni == 1 || length(det)<4){ # sp ==2 indicates first timestep or when ther eare less than 3 datapoints
               if (uni == 1 & length(det)>4 ){
-               xy=as.data.frame(det[,4:5])
-               xy=unique(xy)
-                y= xy$lat
-                x=xy$lon
+         #      xy=as.data.frame(det[,4:5])
+          #     det=unique(as.data.frame(det))
+                y= det$lat
+                x=det$lon
                 pol2 = point2pol(x,y,det,TA)
                 pol2$DOY = det$DOY[1]
                 pol2$YYYYMMDD = det$YYYYMMDD[1]
@@ -371,10 +380,10 @@ year=2016
               
             }else{
               
-              xy=as.data.frame(det[,4:5])
-              xy=unique(xy)
-              y= xy$lat
-              x=xy$lon
+           #   xy=as.data.frame(det[,4:5])
+          #    det=unique(as.data.frame(det))
+              y= det$lat
+              x=det$lon
               pol2 = point2pol(x,y,det,TA)
               buf_pol2 =  gBuffer(pol2,width = -100)
               
