@@ -18,7 +18,7 @@ library(maptools)
 
 sep_dis = 1500                    #distance in m to seprate ignitions
 plot_gif = F                      # whether you want to output the png for each timestep
-only_night = T                    # daily or twice daily fire line
+only_night = F                    # daily or twice daily fire line
 
 out_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/output/"
 out_dir2 = "/Users/stijnhantson/Documents/projects/VIIRS_ros/test/"
@@ -89,7 +89,7 @@ registerDoParallel(cl)
 
 #for (year in 2012:2018){
 foreach(year=2012:2018,.packages=c("sp","rgeos","alphahull","geosphere","igraph","png","rgdal","raster")) %dopar% {
-  
+   
 ra=mod1
 
 shape2 <- subset(shape1, YEAR==year)  #extract fires which occured during the year of interest
@@ -132,18 +132,22 @@ nr_fire = 1
   
 for (nr_fire in 1:length(shape2)){  # perform analysis for each fire
 #subset VIIRS data spatialy and temporaly
-fire = shape2[nr_fire,]
+ fire = shape2[nr_fire,]
 
 fire1 = gBuffer(fire,width = 750) #extract all VIIRS points within a 750m buffer arround the perimeter
  pts_in = po2[!is.na(over(po2,as(fire1,"SpatialPolygons"))),]
 #pts_in$dat = as.Date(as.character(pts_in$YYYYMMDD), format= "%Y%m%d")
 #extract only VIIRS data between incidence and containment data +-1
-ign = (as.Date(fire$ALARM_DATE))-1
+ign2 = (as.Date(fire$ALARM_DATE))-1
 sup = (as.Date(fire$CONT_DATE))+1
-if (is.na(ign)){
-  ign = sup - 90
+if (is.na(ign2)){
+  ign2 = sup - 90
 }
-pts_in = pts_in[pts_in$dat > ign,]
+
+if (is.na(sup)){
+  sup = ign2 + 90
+}
+pts_in = pts_in[pts_in$dat > ign2,]
 pts_in = pts_in[pts_in$dat < sup,]
 
 #convert day-hour-minute to decimal DOY
@@ -481,8 +485,8 @@ l2=rbind(l2,l[[tr]])
 
 l2<-aggregate(l2, c("DOY","YYYYMMDD","HHMM")) 
 
-writeOGR(l2, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_daily",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
-writeOGR(ros, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_ros_daily",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
+writeOGR(l2, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_twiceday",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
+writeOGR(ros, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_ros_twiceday",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
 }}
 #if (!is.na(ros$ros[1]) & length(ros) >1){
 # ros$Col <- rbPal(100)[as.numeric(cut(ros$ros,breaks = 100))]

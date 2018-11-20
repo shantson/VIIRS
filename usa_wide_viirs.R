@@ -130,7 +130,7 @@ year=2016
   
   #foreach(nr_fire=1:length(shape2),.packages=c("sp","rgeos","alphahull","geosphere","igraph","png","rgdal","raster")) %dopar% {
   
- for (nr_fire in 1:length(firesnames)){  # perform analysis for each fire
+ for (nr_fire in 27:length(firesnames)){  # perform analysis for each fire
     #subset VIIRS data spatialy and temporaly
     fire=subset(shape2, fire_num == firesnames[nr_fire])
     maxsize = max(fire$acres)
@@ -154,7 +154,7 @@ year=2016
     }
     pts_in = pts_in[pts_in$dat > ign,]
     pts_in = pts_in[pts_in$dat < sup,]
-   if(length(pts_in$YYYYMMDD)>0){ 
+   if(length(pts_in$YYYYMMDD)>0){
     #convert day-hour-minute to decimal DOY
     pts_in$DOY = as.numeric( strftime(pts_in$dat,format = "%j"))
     hour=(pts_in$HHMM/100) 
@@ -187,8 +187,8 @@ year=2016
       detections = sort(unique(rrrr))
       len1=length(detections)
     }
-    
-    pts_in$dist = NA
+     
+   pts_in$dist = NA
     pts_in$ros = NA
     pts_in$pre_date = NA
     pts_in$prelon = NA
@@ -228,7 +228,7 @@ year=2016
         
         if  (length(det1) == length(det)){  #if all VIIRS points are within 3km from the first point
           nr_ign = 1
-        }else{                              #else loop trough until all VIIRS points are whithin 3km from each other or whether there are 2 groups sperated >3km
+        }else{                           #else loop trough until all VIIRS points are whithin 3km from each other or whether there are 2 groups sperated >3km
           spp=1
           
           #loop trough untill all hotspots are added to dist1 or untill all in dist2 are further than 3km away
@@ -506,8 +506,6 @@ year=2016
  }}
 
 #stopCluster(cl)
-
-
 
 
 
