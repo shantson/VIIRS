@@ -371,8 +371,13 @@ pol2 = point2pol(x,y,det,TA)
 buf_pol2 =  gBuffer(pol2,width = -100)
 
 if (length(buf_pol2) == 0){
-  buf_pol2 =  gBuffer(pol2,width = -5)
+  buf_pol2 =  gBuffer(pol2,width = -20)
 }
+
+if (length(buf_pol2) == 0){
+  buf_pol2 =  gBuffer(pol2,width = 0)
+}
+
 det_day =  det[det$DOY <= detections[sp-1] & det$DOY > (detections[sp-1] - time_dif),] 
 pre_det = det[det$DOY < (detections[sp-1]- time_dif),] 
 

@@ -23,7 +23,7 @@ sep_dis = 1500                    #distance in m to seprate ignitions
 plot_gif = F                      # whether you want to output the png for each timestep
 only_night = T                    # daily or twice daily fire line
 
-out_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/2012/"
+out_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/2012_day/"
 
 mod = raster("/Users/stijnhantson/Documents/data/MCD64_v6/Win03/2000/MCD64monthly.A2000336.Win03.006.burndate.tif")
 viirs_dir="/Users/stijnhantson/Documents/data/VIIRS/global_archive"
@@ -86,8 +86,8 @@ TA <- CRS("+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 
 sp=1
 
 year=2012
-#cl       <- makeCluster(UseCores)
-#registerDoParallel(cl)
+cl       <- makeCluster(UseCores)
+registerDoParallel(cl)
 
 #for (year in 2012:2018){
 #foreach(year=2012:2018,.packages=c("sp","rgeos","alphahull","geosphere","igraph","png","rgdal","raster")) %dopar% {
@@ -132,9 +132,10 @@ year=2012
   firesnames = unique(shape2$fire_num)
   p=1
  td=1
-  #foreach(nr_fire=1:length(shape2),.packages=c("sp","rgeos","alphahull","geosphere","igraph","png","rgdal","raster")) %dopar% {
+ 
+foreach(nr_fire=1:length(firesnames),.packages=c("sp","rgeos","alphahull","geosphere","igraph","png","rgdal","raster","cleangeo","maptools")) %dopar% {
   
- for (nr_fire in 1:length(firesnames)){  # perform analysis for each fire
+# for (nr_fire in 675:length(firesnames)){  # perform analysis for each fire
     #subset VIIRS data spatialy and temporaly
     fire=subset(shape2, fire_num == firesnames[nr_fire])
     maxsize = max(fire$acres)
@@ -303,11 +304,10 @@ year=2012
           }
         }
         
-        
+        print("ign")
+        print(nr_ign)   
         ign=1
         for (ign in 1:nr_ign){   #loop trough each seperate perimeter
-          print("ign")
-          print(ign)
           if (ign == 1){
             det = det1
           }else if (ign == 2){
@@ -388,8 +388,13 @@ year=2012
               buf_pol2 =  gBuffer(pol2,width = -100)
               
               if (length(buf_pol2) == 0){
-                buf_pol2 =  gBuffer(pol2,width = -5)
+                buf_pol2 =  gBuffer(pol2,width = -20)
               }
+              
+              if (length(buf_pol2) == 0){
+                buf_pol2 =  gBuffer(pol2,width = 0)
+              }
+              
               det_day =  det[det$DOY <= detections[sp-1] & det$DOY > (detections[sp-1] - time_dif),] 
               pre_det = det[det$DOY < (detections[sp-1]- time_dif),] 
               
@@ -502,8 +507,8 @@ year=2012
     
     l2<-aggregate(l2, c("DOY","YYYYMMDD","HHMM")) 
     
-    writeOGR(l2, out_dir, layer= paste(year,"_",fire$fire_name[1],"_twiceday",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
-    writeOGR(ros, out_dir, layer= paste(year,"_",fire$fire_name[1],"_ros_twiceday",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
+    writeOGR(l2, out_dir, layer= paste(year,"_",fire$fire_name[1],"_eday",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
+    writeOGR(ros, out_dir, layer= paste(year,"_",fire$fire_name[1],"_ros_day",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
     
     #if (!is.na(ros$ros[1]) & length(ros) >1){
     # ros$Col <- rbPal(100)[as.numeric(cut(ros$ros,breaks = 100))]
@@ -514,7 +519,7 @@ year=2012
   #writeRaster(ra,"/Users/stijnhantson/Documents/data/test250.tif")
  }}
 
-#stopCluster(cl)
+stopCluster(cl)
 
 
 
