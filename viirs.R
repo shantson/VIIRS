@@ -18,9 +18,9 @@ library(maptools)
 
 sep_dis = 1500                    #distance in m to seprate ignitions
 plot_gif = F                      # whether you want to output the png for each timestep
-only_night = F                    # daily or twice daily fire line
+only_night = T                    # daily or twice daily fire line
 
-out_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/output/"
+out_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results/"
 out_dir2 = "/Users/stijnhantson/Documents/projects/VIIRS_ros/test/"
 
 mod = raster("/Users/stijnhantson/Documents/data/MCD64_v6/Win03/2000/MCD64monthly.A2000336.Win03.006.burndate.tif")
@@ -34,7 +34,7 @@ dir.create(file.path(out_dir), showWarnings = FALSE)
 
 time_dif = 0.25
 if (only_night == T){
-  time_dif <- 0.5
+  time_dif <- 0.75
   }
 
 point2pol = function(x,y,da,pro){     # function which converts VIIRS points to fire perimeter
@@ -120,7 +120,7 @@ po2=SpatialPointsDataFrame(cbind(x,y),dat_v,proj4string=lonlat)
 po2=spTransform(po2,TA)
 
 shape2=spTransform(shape2,TA)
-shape2=subset(shape2, GIS_ACRES>5000)
+shape2=subset(shape2, GIS_ACRES>1000)
 crs(shape2)=crs(po2)
 po2$dat = as.Date(as.character(po2$YYYYMMDD), format= "%Y%m%d")
 nr_fire = 1
@@ -194,7 +194,6 @@ sp=1
 
 if (plot_gif ==T){
 plot(fire)
-
 outna = paste(out_dir2,fire$FIRE_NAME[1],".png",sep="")
 png(file = outna)
 dev.set(which = 2)
@@ -490,8 +489,8 @@ l2=rbind(l2,l[[tr]])
 
 l2<-aggregate(l2, c("DOY","YYYYMMDD","HHMM")) 
 
-writeOGR(l2, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_twiceday",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
-writeOGR(ros, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_ros_twiceday",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
+writeOGR(l2, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_daily",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
+writeOGR(ros, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_daily_ros",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
 }}
 #if (!is.na(ros$ros[1]) & length(ros) >1){
 # ros$Col <- rbPal(100)[as.numeric(cut(ros$ros,breaks = 100))]
