@@ -87,8 +87,8 @@ year=2016
 cl       <- makeCluster(UseCores)
 registerDoParallel(cl)
 
-#for (year in 2012:2018){
-foreach(year=2012:2018,.packages=c("sp","rgeos","alphahull","geosphere","igraph","png","rgdal","raster")) %dopar% {
+#for (year in 2012:2017){
+foreach(year=2012:2017,.packages=c("sp","rgeos","alphahull","geosphere","igraph","png","rgdal","raster")) %dopar% {
    
 ra=mod1
 

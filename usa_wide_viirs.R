@@ -37,7 +37,7 @@ dir.create(file.path(out_dir), showWarnings = FALSE)
 
 time_dif = 0.25
 if (only_night == T){
-  time_dif <- 0.5
+  time_dif <- 0.75
 }
 
 point2pol = function(x,y,da,pro){     # function which converts VIIRS points to fire perimeter
