@@ -43,7 +43,9 @@ l_precip= raster(list.files(paste(prism_dir,"precip/", sep=""), pattern = paste(
 l_tmax= raster(list.files(paste(prism_dir,"tmax/", sep=""), pattern = paste(as.character(days1[i]),"_bil.bil$",sep=""), recursive = TRUE, full.names=T))
 l_tmean= raster(list.files(paste(prism_dir,"tmean/", sep=""), pattern = paste(as.character(days1[i]),"_bil.bil$",sep=""), recursive = TRUE, full.names=T))
 l_vpdmax= raster(list.files(paste(prism_dir,"vpdmax/", sep=""), pattern = paste(as.character(days1[i]),"_bil.bil$",sep=""), recursive = TRUE, full.names=T))
-l_wind = raster(list.files(ncep_dir, pattern = days1[i], recursive = TRUE, full.names=T))
+l_wind = raster((list.files(ncep_dir, pattern = days1[i], recursive = TRUE, full.names=T)[1]))
+xmin(l_wind)= -125.0796
+xmax(l_wind)= -95.0114
 
 precip = as.data.frame(extract(l_precip, viirs1))
 tmax = as.data.frame(extract(l_tmax, viirs1))
@@ -72,27 +74,35 @@ result = rbind(result, viirs2)
 }
 }    
   
-rd="/Users/stijnhantson/Downloads/fveg15_1"
-
-
-subset(ogrDrivers(), grepl("GDB", name))
-fc_list <- ogrListLayers(fgdb)
-print(fc_list)
-
-# Read the feature class
-fc <- readOGR(dsn=fgdb,layer="some_featureclass")
-
-# Determine the FC extent, projection, and attribute information
-summary(fc)
-
 
 writeOGR(result, "/Users/stijnhantson/Documents/projects/VIIRS_ros/", layer= "all_ros_meteo", driver="ESRI Shapefile", overwrite_layer = T)
 write.table(daily_res, "/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_meteo.txt",sep="\t")
 
 res=as.data.frame(daily_res)
 
-plot(res$mean_tmean,log10(res$median95_ros+1))
+res$tempbin[res$mean_tmax < 20] = 17.5
+res$tempbin[res$mean_tmax >= 20 & res$mean_tmax < 25 ] = 22.5
+res$tempbin[res$mean_tmax >= 25 & res$mean_tmax < 30 ] = 27.5
+res$tempbin[res$mean_tmax >= 30 & res$mean_tmax < 35 ] = 32.5
+res$tempbin[res$mean_tmax >= 35] = 37.5
 
+res$vpdbin[res$mean_vpdmax < 20] = 15
+res$vpdbin[res$mean_vpdmax >= 20 & res$mean_vpdmax < 30 ] = 25
+res$vpdbin[res$mean_vpdmax >= 30 & res$mean_vpdmax < 40 ] = 35
+res$vpdbin[res$mean_vpdmax >= 40] = 45
+
+boxplot(log10(res$max_ros +1)~res$tempbin, xlab="maximum temperature (deg. C)", ylab="rate-of-spread(log10 m/hr.)")
+boxplot(log10(res$max_ros+1)~res$vpdbin, xlab="maximum VPD (hPa)", ylab="rate-of-spread(log10 m/hr.)")
+
+plot(res$mean_tmax,log10(res$median95_ros+1), xlab="Mean temperature (deg.C)", ylab="Rate-of-Spread (log10 m/hr.)")
+plot(res$mean_windspeed,log10(res$median95_ros+1),xlab="Maximum Windspeed (m/s)", ylab="Rate-of-Spread (log10 m/hr.)")
+
+plot(res$mean_vpdmax ,log10(res$median95_ros+1),xlab="Maximum VPD (hPa)", ylab="Rate-of-Spread (log10 m/hr.)")
+plot(res$mean_tmean ,log10(res$median95_ros+1),xlab="Maximum Windspeed (m/s)", ylab="Rate-of-Spread (log10 m/hr.)")
+
+summary(lm(log10(res$median95_ros+1)~res$mean_vpdmax + res$mean_tmax + res$mean_windspeed))
+
+summary(lm(log10(res$median95_ros+1)~res$mean_windspeed+res$mean_tmean))
 min(res$median95_ros)
 
 

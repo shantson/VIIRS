@@ -353,7 +353,7 @@ if  (length(det1) == length(det)){  #if all VIIRS points are within 3km from the
       df = data.frame(a = 1)
       center = SpatialPointsDataFrame(cbind(mean_x,mean_y),df,proj4string=lonlat)
       center= spTransform(center,TA)
-    pol2 <- gBuffer( center, width=1, byid=TRUE )
+      pol2 <- gBuffer( center, width=1, byid=TRUE )
       
       pol2$DOY = det$DOY[1]
       pol2$YYYYMMDD = det$YYYYMMDD[1]
