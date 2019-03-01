@@ -339,9 +339,9 @@ if  (length(det1) == length(det)){  #if all VIIRS points are within 3km from the
       y= det$lat
       x=det$lon
       pol2 = point2pol(x,y,det,TA)
-      pol2$DOY = det$DOY[1]
-      pol2$YYYYMMDD = det$YYYYMMDD[1]
-      pol2$HHMM = det$HHMM[1]
+      pol2$DOY = max(det$DOY)
+      pol2$YYYYMMDD = max(det$YYYYMMDD)
+      pol2$HHMM = max(det$HHMM)
       
        l<-c(l,pol2)
     }else{
@@ -355,9 +355,9 @@ if  (length(det1) == length(det)){  #if all VIIRS points are within 3km from the
       center= spTransform(center,TA)
       pol2 <- gBuffer( center, width=1, byid=TRUE )
       
-      pol2$DOY = det$DOY[1]
-      pol2$YYYYMMDD = det$YYYYMMDD[1]
-      pol2$HHMM = det$HHMM[1]
+      pol2$DOY = max(det$DOY)
+      pol2$YYYYMMDD = max(det$YYYYMMDD)
+      pol2$HHMM = max(det$HHMM)
       pol2=pol2[,-1]
       l<-c(l,pol2)
     }
