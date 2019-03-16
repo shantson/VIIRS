@@ -192,11 +192,137 @@ if (hr == 24){
 
 
 
+############################################################################################################
+
+################  extract data from gridmet  #####################################
 
 
 
 
+viirs_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results2/"
+gridmet_dir = "/Users/stijnhantson/Documents/data/gridmet/"
 
 
+frap=shapefile("/Users/stijnhantson/Documents/data/FRAP/firep17_1.shp")
 
+viirs_list =  list.files(viirs_dir, pattern = "daily_ros.shp$", recursive = TRUE, full.names=T)
+viirs_dbf =  list.files(viirs_dir, pattern = "daily_ros.dbf$", recursive = TRUE, full.names=T)
+
+viirs_all=shapefile(viirs_list[1])
+result = viirs_all[viirs_all$YYYYMMDD==0,]
+daily_res = c(0,0,0,0,0,0,0,0)
+
+p=1  
+for (p in 1:length(viirs_list)){
+  
+  rows_p = read.dbf(viirs_dbf[p])
+  
+  if (length(rows_p$YYYYMMDD)>0){
+    
+    viirs_all=shapefile(viirs_list[p])
+    
+    dar = as.Date(viirs_all$dat) ####### time is in UTM, so we have the nighttime day as the day after which 
+    viirs_all$date =format(dar,"%Y%m%d")
+    viirs_all$DOY2 = as.integer(viirs_all$DOY - 0.5)
+    #summary(viirs_all)
+    year = substring(dar[1],1,4)
+    
+    #plot(viirs_all$ros~viirs_all$FRP)
+    #plot(log(viirs_all$ros),log(viirs_all$FRP))
+    
+    days1 = unique(viirs_all$DOY2) 
+    i=1
+    for (i in 1:length(days1)){
+     
+      viirs1 = viirs_all[viirs_all$DOY2 == days1[i],]  
+      
+      gridmet_list= list.files(gridmet_dir, pattern = paste(year,".nc$",sep=""), recursive = TRUE, full.names=T)
+      
+      l_bi = raster(gridmet_list[1],band = days1[i] )#Burning index
+      l_erc = raster(gridmet_list[2],band = days1[i] )#energy release component
+      l_etr = raster(gridmet_list[3],band = days1[i] )#evapotranspiration
+      l_fm100 = raster(gridmet_list[4],band = days1[i] )
+      l_fm1000 = raster(gridmet_list[5],band = days1[i] )
+      l_pet = raster(gridmet_list[7],band = days1[i] )#evapotranspiration
+      l_pr = raster(gridmet_list[8],band = days1[i] )#precipitation
+      l_rmax = raster(gridmet_list[9],band = days1[i] )#relative humididty max
+      l_rmin = raster(gridmet_list[10],band = days1[i] )#relative humididty min
+      l_sph = raster(gridmet_list[11],band = days1[i] )#mean specific humidity
+      l_th = raster(gridmet_list[12],band = days1[i] )#wind direction
+      l_tmmn = raster(gridmet_list[13],band = days1[i] ) #min temp
+      l_tmmx = raster(gridmet_list[14],band = days1[i] ) #max temp
+      l_vpd = raster(gridmet_list[15],band = days1[i] )#mean vapor pressure deficit
+      l_vs = raster(gridmet_list[16],band = days1[i] )#windspeed
+      
+      crs(l_bi) = CRS("+init=epsg:4326")
+      crs(l_erc) = CRS("+init=epsg:4326")
+      crs(l_etr) = CRS("+init=epsg:4326")
+      crs(l_fm100)= CRS("+init=epsg:4326")
+      crs(l_fm1000)= CRS("+init=epsg:4326")
+      crs(l_pet)= CRS("+init=epsg:4326")
+      crs(l_pr)= CRS("+init=epsg:4326")
+      crs(l_rmax)= CRS("+init=epsg:4326")
+      crs(l_rmin)= CRS("+init=epsg:4326")
+      crs(l_sph)= CRS("+init=epsg:4326")
+      crs(l_th)= CRS("+init=epsg:4326")
+      crs(l_tmmn)= CRS("+init=epsg:4326")
+      crs(l_tmmx)= CRS("+init=epsg:4326")
+      crs(l_vpd)= CRS("+init=epsg:4326")
+      crs(l_vs)= CRS("+init=epsg:4326")
+      
+      bi = as.data.frame(extract(l_bi, viirs1))
+      erc = as.data.frame(extract(l_erc, viirs1))
+      etr = as.data.frame(extract(l_etr, viirs1))
+      fm100 = as.data.frame(extract(l_fm100, viirs1))
+      fm1000 = as.data.frame(extract(l_fm1000, viirs1))
+      pet = as.data.frame(extract(l_pet, viirs1))
+      pr = as.data.frame(extract(l_pr, viirs1))
+      rmax = as.data.frame(extract(l_rmax, viirs1))
+      rmin = as.data.frame(extract(l_rmin, viirs1))
+      th = as.data.frame(extract(l_th, viirs1))
+      tmmn = as.data.frame(extract(l_tmmn, viirs1))
+      tmmx = as.data.frame(extract(l_tmmx, viirs1))
+      vpd = as.data.frame(extract(l_vpd, viirs1))
+      vs = as.data.frame(extract(l_vs, viirs1))
+      
+      te =as.matrix(cbind(bi,erc,etr,fm100,fm1000,pet,pr,rmax,rmin,th,tmmn,tmmx,vpd,vs))
+      colnames(te) = c("bi","erc","etr","fm100","fm1000","pet","pr","rmax","rmin","th","tmmn","tmmx","vpd","vs")
+      
+      viirs2 = cbind(viirs1,te)
+      
+      
+      bi = mean(bi[,1])
+      erc = mean(erc[,1])
+      etr = mean(etr[,1])
+      fm100 = mean(fm100[,1])
+      fm1000 = mean(fm1000[,1])
+      pet = mean(pet[,1])
+      pr = mean(pr[,1])
+      rmax = mean(rmax[,1])
+      rmin = mean(rmin[,1])
+      th = mean(th[,1])
+      tmmn = mean(tmmn[,1])
+      tmmx = mean(tmmx[,1])
+      vpd = mean(vpd[,1])
+      vs = mean(vs[,1])
+
+      
+      mean_ros = mean(viirs1$ros)
+      max_ros = max(viirs1$ros)
+      median95_ros = quantile(viirs1$ros, 0.95)
+      dail = cbind(mean_ros,max_ros,median95_ros,bi,erc,etr,fm100,fm1000,pet,pr,rmax,rmin,th,tmmn,tmmx,vpd,vs)
+      daily_res = rbind(daily_res, dail)
+      result = rbind(result, viirs2)
+      
+    }
+  }
+}    
+
+
+writeOGR(result, "/Users/stijnhantson/Documents/projects/VIIRS_ros/", layer= "all_ros_meteo", driver="ESRI Shapefile", overwrite_layer = T)
+write.table(daily_res, "/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_meteo.txt",sep="\t")
+
+res=as.data.frame(daily_res)
+
+summary(res)
   

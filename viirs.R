@@ -20,7 +20,7 @@ sep_dis = 1500                    #distance in m to seprate ignitions
 plot_gif = F                      # whether you want to output the png for each timestep
 only_night = T                    # daily or twice daily fire line
 
-out_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results/"
+out_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results3/"
 out_dir2 = "/Users/stijnhantson/Documents/projects/VIIRS_ros/test/"
 
 mod = raster("/Users/stijnhantson/Documents/data/MCD64_v6/Win03/2000/MCD64monthly.A2000336.Win03.006.burndate.tif")
@@ -78,9 +78,9 @@ rbPal <- colorRampPalette(c('red','yellow',"green","blue","black"))
 lonlat = crs("+init=epsg:4326 +proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs +towgs84=0,0,0")
 TA <- CRS("+proj=aea +lat_1=34 +lat_2=40.5 +lat_0=0 +lon_0=-120 +x_0=0 +y_0=-4000000 +datum=NAD83 +units=m +ellps=GRS80")
 dom = extent(-125,-114,32,42)
-mod=crop(mod,dom)
-mod1=projectRaster(mod,crs =TA,method="ngb",res=c(500,500))
-mod1[] = NA
+#mod=crop(mod,dom)
+#mod1=projectRaster(mod,crs =TA,method="ngb",res=c(500,500))
+#mod1[] = NA
 sp=1
 
 year=2016
@@ -90,7 +90,7 @@ registerDoParallel(cl)
 #for (year in 2012:2017){
 foreach(year=2012:2017,.packages=c("sp","rgeos","alphahull","geosphere","igraph","png","rgdal","raster")) %dopar% {
    
-ra=mod1
+#ra=mod1
 
 shape2 <- subset(shape1, YEAR==year)  #extract fires which occured during the year of interest
 crs_frap=crs(shape1)
@@ -183,7 +183,7 @@ if (only_night == T){            #only slect midnight detections
  len1=length(detections)
 }
 
-fir = mod1
+#fir = mod1
 pts_in$dist = NA
 pts_in$ros = NA
 pts_in$pre_date = NA
@@ -384,7 +384,8 @@ det_day$new = !is.na(over(det_day,buf_pol2))
 det_new =  det_day[det_day$new == "FALSE",]
 
 maxdate = max(det_day$YYYYMMDD)
-maxhour = max(det_day$HHMM)
+trs = det_day[det_day$YYYYMMDD==maxdate,]
+maxhour = max(trs$HHMM)
 pre_maxdoy = max(pre_det$DOY)
 maxdoy = max(det_day$DOY)
 
@@ -502,9 +503,6 @@ writeOGR(ros, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_daily_ros",sep=
 }
 
 stopCluster(cl)
-
-
-
 
 
 
