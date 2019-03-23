@@ -523,8 +523,11 @@ for (kr in 1:(pri-1)){
     }
   }
   para=intersect(l3[[kr]],toge)
-
-  para <- para[,-(5:8)]
+  para$area <- area(para)/1000000
+ min_ar = min(para$area)
+ para=para[para$area==min_ar,]
+  
+  para <- para[,-(5:9)]
   names(para@data)[1] <- "DOY"
   names(para@data)[2] <- "YYYYMMDD"
   names(para@data)[3] <- "YEAR"
@@ -543,9 +546,9 @@ if (le > 1){
   }
 }
 
-l2<-aggregate(l2, c("DOY","YYYYMMDD","YEAR","CAUSE")) 
+l2<-aggregate(l5, c("DOY","YYYYMMDD","YEAR","CAUSE")) 
 
-writeOGR(l5, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_daily",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
+writeOGR(l2, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_daily",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
 writeOGR(ros, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_daily_ros",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
 }}
 #if (!is.na(ros$ros[1]) & length(ros) >1){
