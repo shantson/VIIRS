@@ -128,9 +128,9 @@ nr_fire = 1
 
 
 
-foreach(nr_fire=1:length(shape2),.packages=c("sp","rgeos","alphahull","geosphere","igraph","png","rgdal","raster")) %dopar% {
+#foreach(nr_fire=1:length(shape2),.packages=c("sp","rgeos","alphahull","geosphere","igraph","png","rgdal","raster")) %dopar% {
   
-#for (nr_fire in 1:length(shape2)){  # perform analysis for each fire
+for (nr_fire in 1:length(shape2)){  # perform analysis for each fire
 #subset VIIRS data spatialy and temporaly
 
  fire = shape2[nr_fire,]
@@ -291,7 +291,9 @@ if  (length(det1) == length(det)){  #if all VIIRS points are within 3km from the
   }
   }
 
- 
+  maxdoy1 = max(det$DOY)
+  maxyear1 = max(det$YYYYMMDD)
+
   ign=1
   for (ign in 1:nr_ign){   #loop trough each seperate perimeter
 #    print(ign)
@@ -340,8 +342,8 @@ if  (length(det1) == length(det)){  #if all VIIRS points are within 3km from the
       y= det$lat
       x=det$lon
       pol2 = point2pol(x,y,det,TA)
-      pol2$DOY = max(det$DOY)
-      pol2$YYYYMMDD = max(det$YYYYMMDD)
+      pol2$DOY = maxdoy1
+      pol2$YYYYMMDD = maxyear1
 #      pol2$HHMM = max(det$HHMM)
       pol2$YEAR = year
       pol2$CAUSE = fire$CAUSE[1]
@@ -355,10 +357,10 @@ if  (length(det1) == length(det)){  #if all VIIRS points are within 3km from the
       df = data.frame(a = 1)
       center = SpatialPointsDataFrame(cbind(mean_x,mean_y),df,proj4string=lonlat)
       center= spTransform(center,TA)
-      pol2 <- gBuffer( center, width=1, byid=TRUE )
+      pol2 <- gBuffer( center, width=187.5, byid=TRUE )
       
-      pol2$DOY = max(det$DOY)
-      pol2$YYYYMMDD = max(det$YYYYMMDD)
+      pol2$DOY = maxdoy1
+      pol2$YYYYMMDD = maxyear1
 #      pol2$HHMM = max(det$HHMM)
       pol2$YEAR = year
       pol2$CAUSE = fire$CAUSE[1]
@@ -463,8 +465,8 @@ text(.8,.05, det_new$YYYYMMDD[1], cex=3, col="black")
 dev.off()
 }
 
-pol2$DOY = maxdoy
-pol2$YYYYMMDD = maxdate
+pol2$DOY = maxdoy1
+pol2$YYYYMMDD = maxyear1
 #pol2$HHMM = maxhour
 pol2$YEAR = year
 pol2$CAUSE = fire$CAUSE[1]
@@ -512,10 +514,9 @@ l4=c()######## intersect with posterior polgygons
 pri = length(l3)
 kr=1
 for (kr in 1:(pri-1)){
+  print(kr)
    plu=kr+1
   plu1=kr+2
-  
-  
   toge=l3[[plu]]
   if (pri-plu > 0){
     for (tr in plu1:pri){
