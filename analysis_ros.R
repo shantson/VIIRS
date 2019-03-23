@@ -109,31 +109,41 @@ min(res$median95_ros)
 ########################  analysis of surface burnt  ###################
 
 
-viirs_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/output/"
+viirs_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results2/"
 frap=shapefile("/Users/stijnhantson/Documents/data/FRAP/firep17_1.shp")
-
+frap=subset(frap,YEAR_ > 2011)
+frap=subset(frap, GIS_ACRES>1000)
 viirs_list =  list.files(viirs_dir, pattern = "_daily.shp$", recursive = TRUE, full.names=T)
 viirs_dbf =  list.files(viirs_dir, pattern = "ros_daily.dbf$", recursive = TRUE, full.names=T)
-
-viirs_all=shapefile(viirs_list[1])
-result = viirs_all[viirs_all$YYYYMMDD==0,]
-daily_res = c(0,0,0,0,0,0,0)
-
-p=1  
-for (p in 1:length(viirs_list)){
-  rows_p = read.dbf(viirs_dbf[p])
+size_dat = c(0,0,0,0,0)
+trala = 1
+for (trala in 1:length(viirs_list)){
+  print(trala)
+  viirs=shapefile(viirs_list[trala])
+  firename = substring(viirs_list[trala],71,nchar(viirs_list[trala])-10)
   
-  if (length(rows_p$YYYYMMDD)>0){
-   
-     viirs_all=shapefile(viirs_list[p])
-    
+ frr = subset(frap, FIRE_NAME == firename)
+ startdate =  as.Date(frr$ALARM_DATE)
+ start_doy=as.numeric( strftime( startdate,format = "%j"))
+ 
 
-
-  }
+ 
+ viirs$DOY2 = as.integer(viirs$DOY - 0.5)
+ if (is.na(start_doy)){
+   start_doy=min(viirs$DOY2)
+ }
+ viirs$area <- area(viirs)/1000000
+ qr=1
+ size=0
+ for (qr in 1:5){
+   day_s = start_doy+(qr-1)
+   vi = viirs[viirs$DOY2 == day_s,]
+  size[qr] = vi$area[1]
+ }
+ size_dat=rbind(size_dat,size)
 }
-
-
-
+size_dat=as.data.frame(size_dat)
+plot(t(size_dat[2,]),ylim=c(0,100))
 
 #######################  calculate wind speed   #########################
 library(ncdf4)
@@ -325,4 +335,20 @@ write.table(daily_res, "/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_m
 res=as.data.frame(daily_res)
 
 summary(res)
-  
+
+cor(na.omit(res))
+
+summary(lm(log(res$median95_ros) ~ res$vpd + res$bi, na.omit=T ))
+plot(res$vpd,res$median95_ros, ylim=c(0,600))
+
+plot(res$vpd,log10(res$median95_ros+1))
+plot(vpd,log10(median95_ros+1),data=na.omit(res))
+res1=na.omit(res)
+res1=res1[-1,]
+
+
+
+plot(res1$vpd,log10(res1$median95_ros))
+plot(res1$vpd,res1$median95_ros)
+
+

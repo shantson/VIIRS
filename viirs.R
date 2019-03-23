@@ -128,10 +128,11 @@ nr_fire = 1
 
 
 
-#foreach(nr_fire=1:length(shape2),.packages=c("sp","rgeos","alphahull","geosphere","igraph","png","rgdal","raster")) %dopar% {
+foreach(nr_fire=1:length(shape2),.packages=c("sp","rgeos","alphahull","geosphere","igraph","png","rgdal","raster")) %dopar% {
   
-for (nr_fire in 1:length(shape2)){  # perform analysis for each fire
+#for (nr_fire in 1:length(shape2)){  # perform analysis for each fire
 #subset VIIRS data spatialy and temporaly
+
  fire = shape2[nr_fire,]
 
 fire1 = gBuffer(fire,width = 750) #extract all VIIRS points within a 750m buffer arround the perimeter
@@ -341,8 +342,9 @@ if  (length(det1) == length(det)){  #if all VIIRS points are within 3km from the
       pol2 = point2pol(x,y,det,TA)
       pol2$DOY = max(det$DOY)
       pol2$YYYYMMDD = max(det$YYYYMMDD)
-      pol2$HHMM = max(det$HHMM)
-      
+#      pol2$HHMM = max(det$HHMM)
+      pol2$YEAR = year
+      pol2$CAUSE = fire$CAUSE[1]
        l<-c(l,pol2)
     }else{
       y= det$lat
@@ -357,7 +359,9 @@ if  (length(det1) == length(det)){  #if all VIIRS points are within 3km from the
       
       pol2$DOY = max(det$DOY)
       pol2$YYYYMMDD = max(det$YYYYMMDD)
-      pol2$HHMM = max(det$HHMM)
+#      pol2$HHMM = max(det$HHMM)
+      pol2$YEAR = year
+      pol2$CAUSE = fire$CAUSE[1]
       pol2=pol2[,-1]
       l<-c(l,pol2)
     }
@@ -461,8 +465,9 @@ dev.off()
 
 pol2$DOY = maxdoy
 pol2$YYYYMMDD = maxdate
-pol2$HHMM = maxhour
-
+#pol2$HHMM = maxhour
+pol2$YEAR = year
+pol2$CAUSE = fire$CAUSE[1]
 l<-c(l,pol2)     # include new polygon in list of polygons
 
 #print(l)
@@ -480,7 +485,10 @@ l<-c(l,pol2)     # include new polygon in list of polygons
 # pts_in$Col <- rbPal(100)[as.numeric(cut(pts_in$YYYYMMDD,breaks = 20))]
 # pts_in$Col <- rbPal(100)[as.numeric(cut(pts_in$sample ,breaks = 100))]
 # pts_in$Col <- rbPal(100)[as.numeric(cut(pts_in$pixarea ,breaks = 100))]
-le = length(l)
+
+
+
+le = length(l)######## put them together
 l2=l[[1]]
 if (le > 1){
 for (tr in 2:le){
@@ -488,9 +496,56 @@ l2=rbind(l2,l[[tr]])
 }
 }
 
-l2<-aggregate(l2, c("DOY","YYYYMMDD","HHMM")) 
 
-writeOGR(l2, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_daily",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
+li = unique(l2$DOY) ###### put polygons of the same day together
+li_l = length(li)
+l3=c()
+for (lit in 1:li_l){
+ pss = l2[l2$DOY==li[lit],]
+ if (length(pss$DOY)>1){
+ pss =  aggregate(pss, c("DOY","YYYYMMDD","YEAR","CAUSE")) 
+ }
+ l3=c(l3,pss)
+}
+
+l4=c()######## intersect with posterior polgygons
+pri = length(l3)
+kr=1
+for (kr in 1:(pri-1)){
+   plu=kr+1
+  plu1=kr+2
+  
+  
+  toge=l3[[plu]]
+  if (pri-plu > 0){
+    for (tr in plu1:pri){
+      toge=rbind(toge,l3[[tr]])
+    }
+  }
+  para=intersect(l3[[kr]],toge)
+
+  para <- para[,-(5:8)]
+  names(para@data)[1] <- "DOY"
+  names(para@data)[2] <- "YYYYMMDD"
+  names(para@data)[3] <- "YEAR"
+  names(para@data)[4] <- "CAUSE"
+  l4=c(l4,para)
+}
+l4=c(l4,l3[[pri]])
+
+
+l5=c()
+le = length(l4)
+l5=l4[[1]]
+if (le > 1){
+  for (tr in 2:le){
+    l5=rbind(l5,l4[[tr]])
+  }
+}
+
+l2<-aggregate(l2, c("DOY","YYYYMMDD","YEAR","CAUSE")) 
+
+writeOGR(l5, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_daily",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
 writeOGR(ros, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_daily_ros",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
 }}
 #if (!is.na(ros$ros[1]) & length(ros) >1){
