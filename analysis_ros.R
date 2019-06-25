@@ -3,30 +3,49 @@ library(raster)
 library(rgdal)
 library(foreign)
 
-viirs_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results/"
+viirs_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results4/"
 prism_dir = "/Users/stijnhantson/Documents/data/PRISM/"
 ncep_dir = "/Users/stijnhantson/Documents/data/daily_ncdp_wind/"
 
 frap=shapefile("/Users/stijnhantson/Documents/data/FRAP/firep17_1.shp")
+frap2=shapefile("/Users/stijnhantson/Documents/data/FRAP/FIREP18_DRAFT_DO_NOT_DISTRIBUTE/FIREP18_DRAFT_DO_NOT_DISTRIBUTE.shp")
 
 viirs_list =  list.files(viirs_dir, pattern = "daily_ros.shp$", recursive = TRUE, full.names=T)
 viirs_dbf =  list.files(viirs_dir, pattern = "daily_ros.dbf$", recursive = TRUE, full.names=T)
 
 viirs_all=shapefile(viirs_list[1])
 result = viirs_all[viirs_all$YYYYMMDD==0,]
-daily_res = c(0,0,0,0,0,0,0,0)
+daily_res = c(0,0,0,0,0,0,0,0,0,0,0,0)
 
 p=1  
-    for (p in 1:length(viirs_list)){
 
-rows_p = read.dbf(viirs_dbf[p])
+for (p in 192:length(viirs_list)){
 
-if (length(rows_p$YYYYMMDD)>0){
+  rows_p = read.dbf(viirs_dbf[p])
+  firename = substring(viirs_list[p],71,nchar(viirs_list[p])-14)
+  year1 = substring(viirs_list[p],66,69)
+
+    if (length(rows_p$YYYYMMDD)>0){
       
 viirs_all=shapefile(viirs_list[p])
 
+frr=subset(frap,YEAR_ == year1)
+frr = subset(frr, FIRE_NAME == firename)
+if ((length(frr$FIRE_NAME)) == 0){
+  frr = subset(frap2, FIRE_NAME == firename)
+}
+
+cause = frr$CAUSE
+startdate =  as.Date(frr$ALARM_DATE)
+start_doy=as.numeric( strftime( startdate,format = "%j"))
+viirs_all$DOY2 = as.integer(viirs_all$DOY - 0.5)
+if (is.na(start_doy)){
+  start_doy=min(viirs_all$DOY2)
+}
+
 dar = as.Date(viirs_all$dat) - 1      ####### time is in UTM, so we have the nighttime day as the day after which 
 viirs_all$date =format(dar,"%Y%m%d")
+viirs_all$dayfire = viirs_all$DOY2- start_doy
 #summary(viirs_all)
 
 
@@ -66,7 +85,10 @@ mean_windspeed = mean(extract(l_wind, viirs1))
 mean_ros = mean(viirs1$ros)
 max_ros = max(viirs1$ros)
 median95_ros = quantile(viirs1$ros, 0.95)
-dail = cbind(mean_precip,mean_tmax,mean_tmean,mean_vpdmax,mean_windspeed, mean_ros,max_ros,median95_ros)
+
+day_of_fire = viirs1$dayfire[1]
+
+dail = cbind(firename,cause,startdate,day_of_fire,mean_precip,mean_tmax,mean_tmean,mean_vpdmax,mean_windspeed, mean_ros,max_ros,median95_ros)
 daily_res = rbind(daily_res, dail)
 result = rbind(result, viirs2)
 
@@ -76,7 +98,9 @@ result = rbind(result, viirs2)
   
 
 writeOGR(result, "/Users/stijnhantson/Documents/projects/VIIRS_ros/", layer= "all_ros_meteo", driver="ESRI Shapefile", overwrite_layer = T)
-write.table(daily_res, "/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_meteo.txt",sep="\t")
+write.table(daily_res, "/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_meteo.txt",sep="\t", overwrite=T)
+
+daily_res=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_meteo.txt",header=T,row.names=NULL)
 
 res=as.data.frame(daily_res)
 
@@ -109,25 +133,33 @@ min(res$median95_ros)
 ########################  analysis of surface burnt  ###################
 
 
-viirs_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results2/"
+viirs_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results4/"
 frap=shapefile("/Users/stijnhantson/Documents/data/FRAP/firep17_1.shp")
+frap2=shapefile("/Users/stijnhantson/Documents/data/FRAP/FIREP18_DRAFT_DO_NOT_DISTRIBUTE/FIREP18_DRAFT_DO_NOT_DISTRIBUTE.shp")
+frap2=subset(frap2, GIS_ACRES>1000)
+
 frap=subset(frap,YEAR_ > 2011)
 frap=subset(frap, GIS_ACRES>1000)
 viirs_list =  list.files(viirs_dir, pattern = "_daily.shp$", recursive = TRUE, full.names=T)
 viirs_dbf =  list.files(viirs_dir, pattern = "ros_daily.dbf$", recursive = TRUE, full.names=T)
 size_dat = c(0,0,0,0,0)
+size_dat_hum = c(0,0,0,0,0)
+size_dat_lig = c(0,0,0,0,0)
 trala = 1
 for (trala in 1:length(viirs_list)){
-  print(trala)
   viirs=shapefile(viirs_list[trala])
+  cause=viirs$CAUSE[1]
   firename = substring(viirs_list[trala],71,nchar(viirs_list[trala])-10)
+  year1 = substring(viirs_list[trala],66,69)
   
- frr = subset(frap, FIRE_NAME == firename)
+  frr=subset(frap,YEAR_ == year1)
+ frr = subset(frr, FIRE_NAME == firename)
+ if ((length(frr$FIRE_NAME)) == 0){
+   frr = subset(frap2, FIRE_NAME == firename)
+ }
+   
  startdate =  as.Date(frr$ALARM_DATE)
  start_doy=as.numeric( strftime( startdate,format = "%j"))
- 
-
- 
  viirs$DOY2 = as.integer(viirs$DOY - 0.5)
  if (is.na(start_doy)){
    start_doy=min(viirs$DOY2)
@@ -140,10 +172,55 @@ for (trala in 1:length(viirs_list)){
    vi = viirs[viirs$DOY2 == day_s,]
   size[qr] = vi$area[1]
  }
+ dif = size[5]-size[1]
+ 
+ print(paste(trala,firename,sep=" "))
+ print(dif)
+ 
  size_dat=rbind(size_dat,size)
+ if (cause == 1){
+    size_dat_lig =rbind(size_dat_lig,size)
+ }else if(cause != 14) {
+    size_dat_hum =rbind(size_dat_hum,size)
+ }
 }
 size_dat=as.data.frame(size_dat)
+size_dat_lig=as.data.frame(size_dat_lig)
+size_dat_hum=as.data.frame(size_dat_hum)
+colnames(size_dat)=c("day1","day2","day3","day4","day5")
+colnames(size_dat_lig)=c("day1","day2","day3","day4","day5")
+colnames(size_dat_hum)=c("day1","day2","day3","day4","day5")
+
+
+ylab.text = expression('fire size (km'^"2"*')') 
+boxplot(size_dat,ylim=c(0,900), ylab= "")
+mtext(ylab.text,side=2, line =2.5)
+boxplot(size_dat_hum,ylim=c(0,700), ylab= "")
+mtext(ylab.text,side=2, line =2.5)
+boxplot(size_dat_lig,ylim=c(0,700), ylab= "")
+mtext(ylab.text,side=2, line =2.5)
+
 plot(t(size_dat[2,]),ylim=c(0,100))
+points(t(size_dat[4,]))
+
+plot(log10(size_dat$day1),log10(size_dat$day5), xlab = "fire size day1 (log10(km2))",ylab = "fire size day5 (log10(km2))",cex.lab =1.2, ylim=c(-1.5,4), xlim=c(-1.5,4))
+
+summary(size_dat$day5-size_dat$day1)
+
+
+plot(t(size_dat_hum[2,]),ylim=c(0,300), type = "l",ylab="",xaxt = "n",cex=1.3,xlab="")
+mtext(ylab.text,side=2, line =2.5,cex=1.3)
+for (k in 1:length(size_dat_hum[,1])){
+  lines(t(size_dat_hum[k,]), col = colors()[k])
+}
+axis(1, labels = as.character(c("day1","day2","day3","day4","day5")), at = c(1:5),cex=1.3)
+
+plot(t(size_dat_lig[2,]),ylim=c(0,300), type = "l",ylab="",xaxt = "n",cex=1.3,xlab="")
+mtext(ylab.text,side=2, line =2.5,cex=1.3)
+for (k in 1:length(size_dat_lig[,1])){
+  lines(t(size_dat_lig[k,]), col = colors()[k])
+}
+axis(1, labels = as.character(c("day1","day2","day3","day4","day5")), at = c(1:5),cex=1.3)
 
 #######################  calculate wind speed   #########################
 library(ncdf4)
@@ -209,7 +286,7 @@ if (hr == 24){
 
 
 
-viirs_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results2/"
+viirs_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results4/"
 gridmet_dir = "/Users/stijnhantson/Documents/data/gridmet/"
 
 
@@ -332,21 +409,35 @@ for (p in 1:length(viirs_list)){
 writeOGR(result, "/Users/stijnhantson/Documents/projects/VIIRS_ros/", layer= "all_ros_meteo", driver="ESRI Shapefile", overwrite_layer = T)
 write.table(daily_res, "/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_meteo.txt",sep="\t")
 
+daily_res=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_meteo.txt",header=T)
 res=as.data.frame(daily_res)
 
 summary(res)
 
-cor(na.omit(res))
 
 summary(lm(log(res$median95_ros) ~ res$vpd + res$bi, na.omit=T ))
 plot(res$vpd,res$median95_ros, ylim=c(0,600))
 
+
+
 plot(res$vpd,log10(res$median95_ros+1))
 plot(vpd,log10(median95_ros+1),data=na.omit(res))
+
+
+res$logros = log10(res$median95_ros)
+res$logros[is.infinite(res$logros)] = NA
+cor(na.omit(res))
+
+
+
+res$logros = log10(res$median95_ros)
+res$logros[is.infinite(res$logros)] = NA
+
 res1=na.omit(res)
 res1=res1[-1,]
+cor(na.omit(res1))
 
-
+summary(lm(res1$logros~res1$vpd + res1$bi, na.rm=T))
 
 plot(res1$vpd,log10(res1$median95_ros))
 plot(res1$vpd,res1$median95_ros)

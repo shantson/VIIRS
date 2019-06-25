@@ -16,17 +16,18 @@ library(doParallel)
 library(png)
 library(maptools)
 
-sep_dis = 1500                    #distance in m to seprate ignitions
+sep_dis = 1900                    #distance in m to seprate ignitions, 6 pixels = 2250
 plot_gif = F                      # whether you want to output the png for each timestep
 only_night = T                    # daily or twice daily fire line
 
-out_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results3/"
+out_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results4/"
 out_dir2 = "/Users/stijnhantson/Documents/projects/VIIRS_ros/test/"
 
 mod = raster("/Users/stijnhantson/Documents/data/MCD64_v6/Win03/2000/MCD64monthly.A2000336.Win03.006.burndate.tif")
 viirs_dir="/Users/stijnhantson/Documents/data/VIIRS/global_archive"
 shape1 <- readOGR("/Users/stijnhantson/Documents/data/FRAP/firep17_1.shp") #readin FRAP fire perimeter data
 
+shape1 <- readOGR("/Users/stijnhantson/Documents/data/FRAP/FIREP18_DRAFT_DO_NOT_DISTRIBUTE/FIREP18_DRAFT_DO_NOT_DISTRIBUTE.shp")
 
 shape1$YEAR=as.numeric(as.character(shape1$YEAR_)) 
 UseCores <- detectCores() -1
@@ -83,7 +84,7 @@ dom = extent(-125,-114,32,42)
 #mod1[] = NA
 sp=1
 
-year=2016
+year=2012
 cl       <- makeCluster(UseCores)
 registerDoParallel(cl)
 
@@ -128,9 +129,9 @@ nr_fire = 1
 
 
 
-#foreach(nr_fire=1:length(shape2),.packages=c("sp","rgeos","alphahull","geosphere","igraph","png","rgdal","raster")) %dopar% {
+foreach(nr_fire=1:length(shape2),.packages=c("sp","rgeos","alphahull","geosphere","igraph","png","rgdal","raster")) %dopar% {
   
-for (nr_fire in 1:length(shape2)){  # perform analysis for each fire
+#for (nr_fire in 1:length(shape2)){  # perform analysis for each fire
 #subset VIIRS data spatialy and temporaly
 
  fire = shape2[nr_fire,]
@@ -464,6 +465,7 @@ text(.8,.05, det_new$YYYYMMDD[1], cex=3, col="black")
 #close image
 dev.off()
 }
+}
 
 pol2$DOY = maxdoy1
 pol2$YYYYMMDD = maxyear1
@@ -473,7 +475,7 @@ pol2$CAUSE = fire$CAUSE[1]
 l<-c(l,pol2)     # include new polygon in list of polygons
 
 #print(l)
-  }}}}#}
+  }}}#}
   le = length(l)          #make polygon file from all polygons after timeset is over to be used as pre-timestep reference
   l2=l[[1]]
   if (le > 1){
@@ -524,6 +526,9 @@ for (kr in 1:(pri-1)){
     }
   }
   para=intersect(l3[[kr]],toge)
+  if (is.null(para)){
+    l4=c(l4,l3[[kr]])
+  }else{
   para$area <- area(para)/1000000
  min_ar = min(para$area)
  para=para[para$area==min_ar,]
@@ -534,6 +539,7 @@ for (kr in 1:(pri-1)){
   names(para@data)[3] <- "YEAR"
   names(para@data)[4] <- "CAUSE"
   l4=c(l4,para)
+  }
 }
 l4=c(l4,l3[[pri]])
 
@@ -562,6 +568,9 @@ writeOGR(ros, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_daily_ros",sep=
 }
 
 stopCluster(cl)
+
+
+
 
 
 
