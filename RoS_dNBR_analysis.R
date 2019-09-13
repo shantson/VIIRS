@@ -136,22 +136,24 @@ t.test(out1$mean_dnbr,out2$mean_dnbr)
 plot(out$)
 
 
-#######################  make annual comoposite dNBR ############################
+#######################  make annual comoposite dNBR & rdNBR  ############################
 
 path1 = "/Users/stijnhantson/Documents/data/MTBS/DATA/"
 year=2011
 
-for (year in 2000:2011){
+for (year in 2014:2017){
   indir = paste(path1,year,"/",sep="")
   
 li= list.files(indir,pattern = "_dnbr.tif$", recursive = TRUE, full.names=T)
+li1= list.files(indir,pattern = "_rdnbr.tif$", recursive = TRUE, full.names=T)
 
 ppp=0
+ppp1=0
 for (rr in 1:length(li)){
   
   fi_nam = substr(li[rr],1, (nchar(li[rr])-9))
   meta = paste(fi_nam,"_metadata.txt",sep="")
-  f <- readLines(meta)   #### read nbr offset and aply it
+  f <- readLines(meta,warn = FALSE)   #### read nbr offset and aply it
 #  cline <- grep("dNBR offset value used to calculate RdNBR",f,value=TRUE)
   cline <- grep("used to calculate RdNBR",f,value=TRUE)
   val <- as.numeric(str_extract(cline,"[-][0-9]+$"))
@@ -161,16 +163,28 @@ if (is.na(val)){
   
 moz = (raster(li[rr])) - val
 ppp = c(ppp,moz)
+
+moz1 = (raster(li[rr]))
+ppp1 = c(ppp1,moz1)
 }
 
 ppp=ppp[2:length(ppp)]
 ppp$fun <- mean
 ppp$na.rm <- TRUE
 
+ppp1=ppp1[2:length(ppp1)]
+ppp1$fun <- mean
+ppp1$na.rm <- TRUE
+
 y <- do.call(mosaic, ppp)
+y1 <- do.call(mosaic, ppp1)
 
 outdir=paste(path1,year,"_dnbr.tif",sep="")
 writeRaster(y,outdir, overwrite = T)
+
+outdir=paste(path1,year,"_rdnbr.tif",sep="")
+writeRaster(y1,outdir, overwrite = T)
+
 }
 
 
@@ -181,7 +195,7 @@ inpath = "/Users/stijnhantson/Documents/data/MTBS/DATA"
 inpath_viirs = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results4/"
 nr_l = nchar(inpath_viirs)
 fun95 = function(x){quantile(x, 0.95)}
-data_s = c(NA,NA,NA,NA,NA,NA,NA,NA,NA)
+data_s = c(NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA)
 P4S.latlon <- CRS("+proj=longlat +datum=WGS84")
 
 land = raster("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/gaplf2011lc_v30_ca.tif")
@@ -189,11 +203,16 @@ tab = read.table("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/
 tab=tab[,c("Value","CL")]
 tab=as.matrix(tab)
 landcover=reclassify(land,tab)
+landcover[landcover == 3 | landcover == 4  |  landcover == 6 |  landcover == 8 | landcover == 9 | landcover == 10] = 2
 
-for (year in 2012:2016){
+for (year in 2012:2017){
  dnbr =raster(paste(inpath,"/",year,"_dnbr.tif",sep=""))
   dnbr[dnbr < -2000] = NA
- lis= list.files(inpath_viirs ,pattern = "_daily.shp$", recursive = TRUE, full.names=T)
+
+  rdnbr =raster(paste(inpath,"/",year,"_rdnbr.tif",sep=""))
+  rdnbr[rdnbr < -2000] = NA
+  
+  lis= list.files(inpath_viirs ,pattern = "_daily.shp$", recursive = TRUE, full.names=T)
  viirs_list =  list.files(inpath_viirs, pattern = "daily_ros.shp$", recursive = TRUE, full.names=T)
  print(year)
  for (nr_fire in 1:length(lis)){
@@ -219,16 +238,20 @@ for (year in 2012:2016){
      mean_ros = mean(ro1$ros,na.rm=T)
      ros95 = quantile(ro1$ros,0.95,na.rm=T)
      
-     land_samp = extract(landcover,viirs_d,na.rm=T)
-     max_land = names(which.max(table(land_samp)))
      
      
     if (length(viirs_d) == 0){
       mean_dnbr = NA
       dnbr95 = NA
+      mean_rdnbr=NA
+      rdnbr95=NA
       lon = NA
       lat=NA
+      land_samp=NA
+      land_samp=NA
     }else{
+      land_samp = extract(landcover,viirs_d,na.rm=T)
+      max_land = names(which.max(table(land_samp)))
      if (area(viirs_d) > 10000){
       te = spTransform(viirs_d,P4S.latlon)
     centroids <- getSpPPolygonsLabptSlots(te)   #calculate centroids
@@ -237,17 +260,23 @@ for (year in 2012:2016){
     
     
     dnbr_samp = extract(dnbr,viirs_d,na.rm=TRUE)
- 
-       mean_dnbr = mean(dnbr_samp[[1]],na.rm=T)
+    rdnbr_samp = extract(rdnbr,viirs_d,na.rm=TRUE)
+    
+    mean_dnbr = mean(dnbr_samp[[1]],na.rm=T)
     dnbr95 = quantile(dnbr_samp[[1]], 0.95,na.rm=T)
+    
+    mean_rdnbr=mean(rdnbr_samp[[1]],na.rm=T)
+    rdnbr95=quantile(rdnbr_samp[[1]], 0.95,na.rm=T)
      }else{
        mean_dnbr = NA
        dnbr95 = NA
        lon = NA
        lat=NA
+       mean_rdnbr=NA
+       rdnbr95=NA
      }
     }
-  dat = c(lon,lat,fire,nr_days,max_land,mean_ros,ros95, mean_dnbr,dnbr95)
+  dat = c(lon,lat,fire,nr_days,max_land,mean_ros,ros95, mean_dnbr,dnbr95,mean_rdnbr,rdnbr95)
   data_s = rbind(data_s,dat)
   mean_ros=0
   ros95=0
@@ -259,6 +288,8 @@ for (year in 2012:2016){
   lat=0
   coordinates = 0
   max_land = 0
+  mean_rdnbr=0
+  rdnbr95=0
    }
   }
  }
@@ -266,7 +297,7 @@ for (year in 2012:2016){
 rownames(data_s) <- c()
 data_s1 = as.data.frame(data_s)
 
-names(data_s1) = c("lon","lat","fire","nr_day","max_land","mean_ros","ros95","mean_dnbr","dnbr95")
+names(data_s1) = c("lon","lat","fire","nr_day","max_land","mean_ros","ros95","mean_dnbr","dnbr95","mean_rdnbr","rdnbr95")
 
 data_s1=na.omit(data_s1)
 data_s1$mean_ros =as.numeric(as.character(data_s1$mean_ros))

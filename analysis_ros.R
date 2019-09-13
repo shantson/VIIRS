@@ -621,19 +621,33 @@ frap=shapefile("/Users/stijnhantson/Documents/data/FRAP/firep17_1.shp")
 
 viirs_list =  list.files(viirs_dir, pattern = "daily_ros.shp$", recursive = TRUE, full.names=T)
 viirs_dbf =  list.files(viirs_dir, pattern = "daily_ros.dbf$", recursive = TRUE, full.names=T)
+spread_list =list.files(viirs_dir, pattern = "_daily.shp$", recursive = TRUE, full.names=T)
+
+land = raster("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/gaplf2011lc_v30_ca.tif")
+tab = read.table("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/GAP_LANDFIRE_National_Terrestrial_Ecosystems_2011_Attributes.txt",sep="\t",header=T)
+tab=tab[,c("Value","CL")]
+tab=as.matrix(tab)
+landcover=reclassify(land,tab)
+landcover[landcover == 3 | landcover == 4  |  landcover == 6 |  landcover == 8 | landcover == 9 | landcover == 10] = 2
+
 
 viirs_all=shapefile(viirs_list[1])
-result = viirs_all[viirs_all$YYYYMMDD==0,]
-daily_res = c(0,0,0,0,0,0,0,0)
+result = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+daily_res = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
 
 p=1  
 for (p in 1:length(viirs_list)){
-  
+  print(p)
   rows_p = read.dbf(viirs_dbf[p])
   
   if (length(rows_p$YYYYMMDD)>0){
     
     viirs_all=shapefile(viirs_list[p])
+    firespread <- readOGR(spread_list[p]) 
+    firespread$DOY2 = as.integer(firespread$DOY - 0.5)
+    firename = substring(viirs_list[p],71,(nchar(viirs_list[p])-14))
+    
+    
     
     dar = as.Date(viirs_all$dat) ####### time is in UTM, so we have the nighttime day as the day after which 
     viirs_all$date =format(dar,"%Y%m%d")
@@ -647,15 +661,27 @@ for (p in 1:length(viirs_list)){
     inputyear=paste(year,"-01-01",sep="")
     days2 =  as.Date((unique(viirs_all$DOY2)-1) , origin = inputyear)
     days1 = unique(viirs_all$DOY2) 
+  YYYYMMDD = unique(viirs_all$YYYYMMDD)
+  
+  total = firespread[firespread$YYYYMMDD == max(firespread$YYYYMMDD) ,]
+  total_area = gArea(total) 
+  
   
     i=1
     for (i in 1:length(days1)){
       
+      print(paste("day", i))
+      fire_new = firespread[firespread$DOY2 == days1[i] ,]
+      if (length(fire_new) > 0){
+      growth = gArea(fire_new)  
+      }else{growth = NA}
+     
       yearmonday = days2[i]
       mont = substring(yearmonday,6,7)
       dag = substring(yearmonday,9,10)
       wrf_inp = paste(wrf_data,"wrfpost_d02","_",year,"/wrfpost_d02","_",year,mont,".nc", sep="")
       
+
       ncfname=wrf_inp
       ncin <- nc_open(ncfname)
       lon <- ncvar_get(ncin,"longitude")
@@ -665,7 +691,9 @@ for (p in 1:length(viirs_list)){
 
       e=extent(-130.5668, -112.9903, 29.10237, 44.44697)
       r <- raster(e)
-      res(r)=c(0.1,0.1)
+      crs(r) = CRS("+init=epsg:4326")
+      r = projectRaster(r,crs="+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs",res=10000 )
+   #   res(r)=c(4000,4000)
       
       tmp_array1 <- ncvar_get(ncin,"U10")
       tmp_array2 <- ncvar_get(ncin,"V10")
@@ -702,6 +730,26 @@ for (p in 1:length(viirs_list)){
      das3v  =  SpatialPointsDataFrame(coord,pts3v) 
      das4v  =  SpatialPointsDataFrame(coord,pts4v) 
      
+     proj4string(das1) = CRS("+init=epsg:4326")
+     proj4string(das2) = CRS("+init=epsg:4326")
+     proj4string(das3) = CRS("+init=epsg:4326")
+     proj4string(das4) = CRS("+init=epsg:4326")
+    
+     proj4string(das1v) = CRS("+init=epsg:4326")
+     proj4string(das2v) = CRS("+init=epsg:4326")
+     proj4string(das3v) = CRS("+init=epsg:4326")
+     proj4string(das4v) = CRS("+init=epsg:4326")
+     
+     das1 = spTransform(das1,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
+     das2 = spTransform(das2,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
+     das3 = spTransform(das3,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
+     das4 = spTransform(das4,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
+     
+     das1v = spTransform(das1v,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
+     das2v = spTransform(das2v,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
+     das3v = spTransform(das3v,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
+     das4v = spTransform(das4v,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
+     
      wrf_u1 = rasterize(das1,r,fun=mean)
      wrf_u2 = rasterize(das2,r,fun=mean)
      wrf_u3 = rasterize(das3,r,fun=mean)
@@ -735,8 +783,8 @@ for (p in 1:length(viirs_list)){
       l_vpd = raster(gridmet_list[15],band = days1[i] )#mean vapor pressure deficit
       l_vs = raster(gridmet_list[16],band = days1[i] )#windspeed
       
-      crs(wrf_v) = CRS("+init=epsg:4326")
-      crs(wrf_u) = CRS("+init=epsg:4326")
+#      crs(wrf_v) = CRS("+init=epsg:4326")
+#      crs(wrf_u) = CRS("+init=epsg:4326")
       crs(l_bi) = CRS("+init=epsg:4326")
       crs(l_erc) = CRS("+init=epsg:4326")
       crs(l_etr) = CRS("+init=epsg:4326")
@@ -771,10 +819,10 @@ for (p in 1:length(viirs_list)){
       vpd = as.data.frame(extract(l_vpd, viirs1))
       vs = as.data.frame(extract(l_vs, viirs1))
       
-      te =as.matrix(cbind(bi,erc,etr,fm100,fm1000,pet,pr,rmax,rmin,th,tmmn,tmmx,vpd,vs,ws))
-      colnames(te) = c("bi","erc","etr","fm100","fm1000","pet","pr","rmax","rmin","th","tmmn","tmmx","vpd","vs","ws")
-      
-      viirs2 = cbind(viirs1,te)
+ #     te =as.matrix(cbind(bi,erc,etr,fm100,fm1000,pet,pr,rmax,rmin,th,tmmn,tmmx,vpd,vs,ws,growth,total_area))
+  #    colnames(te) = c("bi","erc","etr","fm100","fm1000","pet","pr","rmax","rmin","th","tmmn","tmmx","vpd","vs","ws","growth","tot_area")
+ #     
+ #     viirs2 = cbind(viirs1,te)
       
       ws = mean(ws[,1])
       bi = mean(bi[,1])
@@ -792,13 +840,23 @@ for (p in 1:length(viirs_list)){
       vpd = mean(vpd[,1])
       vs = mean(vs[,1])
       
+      land_samp = extract(landcover,fire_new,na.rm=T)
+      max_land = names(which.max(table(land_samp)))
+      
+      if (length(max_land) < 1){
+        max_land = NA
+      }
       
       mean_ros = mean(viirs1$ros)
       max_ros = max(viirs1$ros)
       median95_ros = quantile(viirs1$ros, 0.95)
-      dail = cbind(mean_ros,max_ros,median95_ros,bi,erc,etr,fm100,fm1000,pet,pr,rmax,rmin,th,tmmn,tmmx,vpd,vs,ws)
+      
+      mean_frp = mean(viirs1$FRP)
+      frp_95 = quantile(viirs1$FRP, 0.95)
+      
+      dail = cbind(mean_ros,max_ros,median95_ros,bi,erc,etr,fm100,fm1000,pet,pr,rmax,rmin,th,tmmn,tmmx,vpd,vs,ws,growth,total_area, mean_frp, frp_95,max_land,firename)
       daily_res = rbind(daily_res, dail)
-      result = rbind(result, viirs2)
+  #    result = rbind(result, viirs2)
       
     }
   }
@@ -811,16 +869,59 @@ write.table(daily_res, "/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_m
 daily_res=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_meteo.txt",header=T)
 res=as.data.frame(daily_res)
 
+res$mean_ros =as.numeric(as.character(res$mean_ros))
+res$max_ros =as.numeric(as.character(res$max_ros))
+res$median95_ros =as.numeric(as.character(res$median95_ros))
+res$bi =as.numeric(as.character(res$bi))
+res$erc =as.numeric(as.character(res$erc))
+res$etr =as.numeric(as.character(res$etr))
+res$fm100 =as.numeric(as.character(res$fm100))
+res$fm1000 =as.numeric(as.character(res$fm1000))
+res$pet =as.numeric(as.character(res$pet))
+res$pr =as.numeric(as.character(res$pr))
+res$rmax =as.numeric(as.character(res$rmax))
+res$rmin =as.numeric(as.character(res$rmin))
+res$th =as.numeric(as.character(res$th))
+res$tmmn =as.numeric(as.character(res$tmmn))
+res$tmmx =as.numeric(as.character(res$tmmx))
+res$vpd =as.numeric(as.character(res$vpd))
+res$ws =as.numeric(as.character(res$ws))
+res$vs =as.numeric(as.character(res$vs))
+res$growth =as.numeric(as.character(res$growth))
+res$total_area =as.numeric(as.character(res$total_area))
+res$mean_frp =as.numeric(as.character(res$mean_frp))
+res$frp_95 =as.numeric(as.character(res$frp_95))
+res$max_land =as.numeric(as.character(res$max_land))
+
 summary(res)
 
+res$per_ba = res$growth/res$total_area
 
-summary(lm(log(res$median95_ros+1) ~ res$vpd + res$ws, na.omit=T ))
-plot(res$vs,log(res$median95_ros+1))
+res = res[res$per_ba < 0.75,]
 
+res_f = res[res$max_land == 1,]
+res_p = res[res$max_land != 1,]
+
+
+summary(lm(log(res$median95_ros+1) ~ res$vpd+ res$ws, na.omit=T ))
+summary(lm(log(res_f$median95_ros+1) ~ res_f$vpd+ res_f$ws, na.omit=T ))
+summary(lm(log(res_p$median95_ros+1) ~ res_p$vpd+ res_p$ws, na.omit=T ))
+
+plot(res$tmmx,log(res$median95_ros+1))
+plot(res_f$tmmx,log(res_f$median95_ros+1))
+plot(res_p$tmmx,log(res_p$median95_ros+1))
+
+
+plot(log(res$mean_frp+1),log(res$median95_ros+1))
+plot(res$mean_frp,res$median95_ros)
+summary(lm(log(res$mean_frp+1)~log(res$median95_ros+1)))
 
 
 plot(res$vpd,log10(res$median95_ros+1))
-plot(vpd,log10(median95_ros+1),data=na.omit(res))
+plot(res$ws,log10(res$median95_ros+1),xlim=c(0,6))
+plot(res$vs,log10(res$median95_ros+1))
+
+plot(res$ws,res$vs, xlim=c(0,6),ylim = c(0,6))
 
 
 res$logros = log10(res$median95_ros)
