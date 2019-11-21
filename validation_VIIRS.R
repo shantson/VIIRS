@@ -203,3 +203,55 @@ plot(hist(dif_mod, breaks=seq(min(dif_mod)-0.5, max(dif_mod)+0.5, by=1), xlim=c(
 }
 dev.off()
 
+
+
+
+ras_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/evaluation/test/"
+ras_list =  list.files(ras_dir, pattern = ".tif$", recursive = TRUE, full.names=T)
+modis_list = list.files("/Users/stijnhantson/Documents/data/MCD64_v6/Win03/", pattern = "burndate.tif$", recursive = TRUE, full.names=T)
+
+t=0
+ras_sh =1
+tiff(file="/Users/stijnhantson/Documents/projects/VIIRS_ros/test1.tif",width=3000,height=3000, res=350)
+par(mfrow=c(5,3),mar=c(3,3,1,0))
+ff1=0
+for (ras_sh in 1:((length(ras_list))/2)){
+  print(names[ras_sh]) 
+  t=t+1
+  viirs = raster(ras_list[t])  
+  t=t+1
+  ref = raster(ras_list[t])  
+  
+  
+  if (names[ras_sh]=="rough" | names[ras_sh]=="littles"){## these seem to have data taken in the morning
+    ref=ref+1
+  }
+  if (names[ras_sh]=="WhiteBaldy"){## DOY not well calculated
+    ref=ref-1
+  }
+  
+  if (names[ras_sh]=="bagley"){## DOY not well calculated
+    ref=ref-1
+  }
+  
+  
+  viirs_u=unique(viirs)
+  ref_u=unique(ref)
+  days = unique(c(viirs_u,ref_u))
+  f_v=as.data.frame(freq(viirs))
+  f_r=as.data.frame(freq(ref))
+  ff = merge(f_v,f_r,by=c("value","value"),all=T)
+  ff=ff[!ff$value< (-999),]
+  ff1=rbind(ff1,ff)
+}
+
+ff2=na.omit(ff1)
+ff2=na.omit(ff)
+
+plot(ff2$count.x,ff2$count.y)
+plot(log(ff2$count.x),log(ff2$count.y))
+
+lm(log(ff2$count.x+1)~log(ff2$count.y+1),na.rm=T)
+
+plot(ff2$count.x,ff2$count.y)
+summary(lm(ff2$count.x~ff2$count.y))

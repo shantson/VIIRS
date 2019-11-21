@@ -294,8 +294,12 @@ for (year in 2012:2017){
   }
  }
 }
+
+write.table(data_s, "/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_dNBR_V2.txt",sep="\t")
+
 rownames(data_s) <- c()
 data_s1 = as.data.frame(data_s)
+
 
 names(data_s1) = c("lon","lat","fire","nr_day","max_land","mean_ros","ros95","mean_dnbr","dnbr95","mean_rdnbr","rdnbr95")
 
@@ -304,6 +308,8 @@ data_s1$mean_ros =as.numeric(as.character(data_s1$mean_ros))
 data_s1$ros95 =as.numeric(as.character(data_s1$ros95))
 data_s1$mean_dnbr =as.numeric(as.character(data_s1$mean_dnbr))
 data_s1$dnbr95 =as.numeric(as.character(data_s1$dnbr95))
+data_s1$mean_rdnbr =as.numeric(as.character(data_s1$mean_rdnbr))
+data_s1$rdnbr95 =as.numeric(as.character(data_s1$rdnbr95))
 data_s1$lon =as.numeric(as.character(data_s1$lon))
 data_s1$lat =as.numeric(as.character(data_s1$lat))
 data_s1=na.omit(data_s1)
@@ -315,18 +321,19 @@ shape = spTransform(shape,P4S.latlon)
 eco = over(pts, shape)
 data_s1$L1CODE = eco$NA_L1CODE
 data_s1$L3name = eco$US_L3NAME
+data_s1$L1CODE =as.numeric(as.character(data_s1$L1CODE))
 
-data_s1$log_ros = log10(data_s1$mean_ros+1)
-data_s1$log_ros95 = log10(data_s1$ros95+1)
+data_s1$log_ros = log10(data_s1$mean_ros)
+data_s1$log_ros95 = log10(data_s1$ros95)
 data_s1 = data_s1[data_s1$mean_ros >0,]
 
-data_test = data_s1[data_s1$L1CODE == 6,]
+data_test = data_s1[data_s1$L1CODE == 11,]
 plot(log(data_test$mean_ros+1), data_test$mean_dnbr)
-plot(data_test$log_ros95, data_test$dnbr95,xlab="log10 RoS 95p (m/hr)",ylab="95p dNBR")
+plot(data_test$log_ros95, data_test$rdnbr95,xlab="log10 RoS 95p (m/hr)",ylab="95p dNBR")
 abline(lm(data_test$dnbr95~data_test$log_ros95))
 summary(lm(data_test$dnbr95~data_test$log_ros95))
 
-data_test = data_s1[data_s1$max_land == 1,]
+data_test = data_s1[data_s1$max_land == 2,]
 plot(log(data_test$mean_ros+1), data_test$mean_dnbr)
 plot(data_test$log_ros95, data_test$dnbr95,xlab="log10 RoS 95p (m/hr)",ylab="95p dNBR")
 abline(lm(data_test$dnbr95~data_test$log_ros95))
@@ -348,8 +355,95 @@ plot(log10(data_s1$mean_ros+1), data_s1$mean_dnbr, xlab="log10 mean RoS (m/hr)",
 
 
 
+########### final figures  ##############
 
 
+###### dNBR ~ RoS
+
+data_test = data_s1[data_s1$L1CODE == 6,]
+plot(data_test$log_ros, data_test$mean_dnbr,xlab="log10 mean RoS (m/h)",ylab="mean dNBR", cex.lab=1.4,cex.axis = 1.3)
+plot(data_test$log_ros95, data_test$dnbr95,xlab="log10 RoS 95p (m/h)",ylab="95p dNBR", cex.lab=1.4,cex.axis = 1.3)
+
+data_test = data_s1[data_s1$L1CODE == 11,]
+plot(data_test$log_ros, data_test$mean_dnbr,xlab="log10 mean RoS (m/h)",ylab="mean dNBR", cex.lab=1.4,cex.axis = 1.3)
+plot(data_test$log_ros95, data_test$dnbr95,xlab="log10 RoS 95p (m/h)",ylab="95p dNBR", cex.lab=1.4,cex.axis = 1.3)
 
 
+data_test = data_s1[data_s1$max_land == 1,]
+plot(data_test$log_ros, data_test$mean_dnbr,xlab="log10 mean RoS (m/h)",ylab="mean dNBR", cex.lab=1.4,cex.axis = 1.3)
+plot(data_test$log_ros95, data_test$dnbr95,xlab="log10 RoS 95p (m/h)",ylab="95p dNBR", cex.lab=1.4,cex.axis = 1.3)
+
+data_test = data_s1[data_s1$max_land == 2,]
+plot(data_test$log_ros, data_test$mean_dnbr,xlab="log10 mean RoS (m/h)",ylab="mean dNBR", cex.lab=1.4,cex.axis = 1.3)
+plot(data_test$log_ros95, data_test$dnbr95,xlab="log10 RoS 95p (m/h)",ylab="95p dNBR", cex.lab=1.4,cex.axis = 1.3)
+
+
+###### rdNBR ~ RoS
+
+data_test = data_s1[data_s1$L1CODE == 6,]
+pdf('/Users/stijnhantson/Documents/projects/VIIRS_ros/figures/forest_dNBR-meanRoS.pdf')
+plot(data_test$log_ros, data_test$mean_dnbr,xlab="log10 mean RoS (m/h)",ylab="mean dNBR", cex.lab=1.4,cex.axis = 1.3)
+dev.off()
+
+pdf('/Users/stijnhantson/Documents/projects/VIIRS_ros/figures/forest_dNBR-95RoS.pdf')
+plot(data_test$log_ros95, data_test$dnbr95,xlab="log10 RoS 95p (m/h)",ylab="95p dNBR", cex.lab=1.4,cex.axis = 1.3)
+dev.off()
+
+pdf('/Users/stijnhantson/Documents/projects/VIIRS_ros/figures/forest_rdNBR-meanRoS.pdf')
+plot(data_test$log_ros, data_test$mean_rdnbr,xlab="log10 mean RoS (m/h)",ylab="mean rdNBR", cex.lab=1.4,cex.axis = 1.3)
+dev.off()
+
+pdf('/Users/stijnhantson/Documents/projects/VIIRS_ros/figures/forest_rdNBR-95RoS.pdf')
+plot(data_test$log_ros95, data_test$rdnbr95,xlab="log10 RoS 95p (m/h)",ylab="95p rdNBR", cex.lab=1.4,cex.axis = 1.3)
+dev.off()
+
+data_test = data_s1[data_s1$L1CODE == 11,]
+pdf('/Users/stijnhantson/Documents/projects/VIIRS_ros/figures/noforest_dNBR-meanRoS.pdf')
+plot(data_test$log_ros, data_test$mean_dnbr,xlab="log10 mean RoS (m/h)",ylab="mean dNBR", cex.lab=1.4,cex.axis = 1.3)
+dev.off()
+
+pdf('/Users/stijnhantson/Documents/projects/VIIRS_ros/figures/noforest_dNBR-95RoS.pdf')
+plot(data_test$log_ros95, data_test$dnbr95,xlab="log10 RoS 95p (m/h)",ylab="95p dNBR", cex.lab=1.4,cex.axis = 1.3)
+dev.off()
+
+pdf('/Users/stijnhantson/Documents/projects/VIIRS_ros/figures/noforest_rdNBR-meanRoS.pdf')
+plot(data_test$log_ros, data_test$mean_rdnbr,xlab="log10 mean RoS (m/h)",ylab="mean rdNBR", cex.lab=1.4,cex.axis = 1.3)
+dev.off()
+
+pdf('/Users/stijnhantson/Documents/projects/VIIRS_ros/figures/noforest_rdNBR-95RoS.pdf')
+plot(data_test$log_ros95, data_test$rdnbr95,xlab="log10 RoS 95p (m/h)",ylab="95p rdNBR", cex.lab=1.4,cex.axis = 1.3)
+dev.off()
+
+
+data_test = data_s1[data_s1$max_land == 1,]
+pdf('/Users/stijnhantson/Documents/projects/VIIRS_ros/figures/sierra_rdNBR-meanRoS.pdf')
+plot(data_test$log_ros, data_test$mean_rdnbr,xlab="log10 mean RoS (m/h)",ylab="mean rdNBR", cex.lab=1.4,cex.axis = 1.3)
+dev.off()
+pdf('/Users/stijnhantson/Documents/projects/VIIRS_ros/figures/sierra_rdNBR-95RoS.pdf')
+plot(data_test$log_ros95, data_test$rdnbr95,xlab="log10 RoS 95p (m/h)",ylab="95p rdNBR", cex.lab=1.4,cex.axis = 1.3)
+dev.off()
+
+pdf('/Users/stijnhantson/Documents/projects/VIIRS_ros/figures/sierra_dNBR-meanRoS.pdf')
+plot(data_test$log_ros, data_test$mean_dnbr,xlab="log10 mean RoS (m/h)",ylab="mean dNBR", cex.lab=1.4,cex.axis = 1.3)
+dev.off()
+pdf('/Users/stijnhantson/Documents/projects/VIIRS_ros/figures/sierra_dNBR-95RoS.pdf')
+plot(data_test$log_ros95, data_test$dnbr95,xlab="log10 RoS 95p (m/h)",ylab="95p dNBR", cex.lab=1.4,cex.axis = 1.3)
+dev.off()
+
+
+data_test = data_s1[data_s1$max_land == 2,]
+pdf('/Users/stijnhantson/Documents/projects/VIIRS_ros/figures/socal_rdNBR-meanRoS.pdf')
+plot(data_test$log_ros, data_test$mean_rdnbr,xlab="log10 mean RoS (m/h)",ylab="mean rdNBR", cex.lab=1.4,cex.axis = 1.3)
+dev.off()
+pdf('/Users/stijnhantson/Documents/projects/VIIRS_ros/figures/socal_rdNBR-95RoS.pdf')
+plot(data_test$log_ros95, data_test$rdnbr95,xlab="log10 RoS 95p (m/h)",ylab="95p rdNBR", cex.lab=1.4,cex.axis = 1.3)
+dev.off()
+
+data_test = data_s1[data_s1$max_land == 2,]
+pdf('/Users/stijnhantson/Documents/projects/VIIRS_ros/figures/socal_dNBR-meanRoS.pdf')
+plot(data_test$log_ros, data_test$mean_dnbr,xlab="log10 mean RoS (m/h)",ylab="mean dNBR", cex.lab=1.4,cex.axis = 1.3)
+dev.off()
+pdf('/Users/stijnhantson/Documents/projects/VIIRS_ros/figures/socal_dNBR-95RoS.pdf')
+plot(data_test$log_ros95, data_test$dnbr95,xlab="log10 RoS 95p (m/h)",ylab="95p dNBR", cex.lab=1.4,cex.axis = 1.3)
+dev.off()
 

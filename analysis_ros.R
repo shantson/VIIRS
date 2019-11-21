@@ -132,19 +132,38 @@ min(res$median95_ros)
 
 #############  predict fire size in future ###############
 
-
+land = raster("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/gaplf2011lc_v30_ca.tif")
+tab = read.table("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/GAP_LANDFIRE_National_Terrestrial_Ecosystems_2011_Attributes.txt",sep="\t",header=T)
+tab=tab[,c("Value","CL")]
+tab=as.matrix(tab)
+landcover=reclassify(land,tab)
+landcover[landcover == 3 | landcover == 4  |  landcover == 6 |  landcover == 8 | landcover == 9 | landcover == 10] = 2
 
 viirs_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results4/"
 frap=shapefile("/Users/stijnhantson/Documents/data/FRAP/firep17_1.shp")
 frap2=shapefile("/Users/stijnhantson/Documents/data/FRAP/FIREP18_DRAFT_DO_NOT_DISTRIBUTE/FIREP18_DRAFT_DO_NOT_DISTRIBUTE.shp")
 frap2=subset(frap2, GIS_ACRES>1000)
 
+shape = shapefile("/Users/stijnhantson/Documents/data/veg_california/ca_eco_l3/ca_eco_l3.shp")
+shape = spTransform(shape,crs(frap))
+
+bio = raster("/Users/stijnhantson/Documents/data/2010_Biomass.tif")
+dem = raster("/Users/stijnhantson/Documents/data/output_srtm.tif")
 frap=subset(frap,YEAR_ > 2011)
 frap=subset(frap, GIS_ACRES>1000)
 viirs_list =  list.files(viirs_dir, pattern = "_daily.shp$", recursive = TRUE, full.names=T)
 viirs_dbf =  list.files(viirs_dir, pattern = "ros_daily.dbf$", recursive = TRUE, full.names=T)
-size_dat = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+size_dat = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
 
+day = startdate + qr - 1
+day =format(day,"%Y%m%d")
+
+mean_precip = 0
+mean_tmax =0
+mean_tmean = 0
+mean_vpdmax =0
+mean_windspeed = 0
+day_of_fire=0
 trala = 1
 for (trala in 1:length(viirs_list)){
   print(trala)
@@ -158,6 +177,26 @@ for (trala in 1:length(viirs_list)){
   if ((length(frr$FIRE_NAME)) == 0){
     frr = subset(frap2, FIRE_NAME == firename)
   }
+  
+  land_samp = extract(landcover,frr[1,],na.rm=T)
+  max_land = names(which.max(table(land_samp)))
+  
+  biom = extract(bio,frr[1,],na.rm=T)
+  biomass = mean(na.omit(as.numeric(unlist((biom)))))
+  
+  dem1 = extract(dem,frr[1,],na.rm=T)
+  elevation = mean(na.omit(as.numeric(unlist((dem1)))))
+  
+  centroids <- getSpPPolygonsLabptSlots(frr)   #calculate centroids
+  pts <- SpatialPoints(centroids,crs(frap))
+
+  eco = over(pts, shape)
+  eco1 = eco$NA_L1CODE
+  if (is.na(eco1)){
+    max_land=NA
+    biomass=NA
+  }
+
   
   startdate =  as.Date(frr$ALARM_DATE)
   if (is.na(startdate)){
@@ -206,16 +245,18 @@ for (trala in 1:length(viirs_list)){
     }
     
   }
-  pas = cbind(firename,year1,cause,size[1],size[2],size[3],size[4],size[5],final_firesize,mean_precip[1],mean_precip[2],mean_precip[3],mean_precip[4],mean_precip[5],mean_tmax[1],mean_tmax[2],mean_tmax[3],mean_tmax[4],mean_tmax[5],mean_tmean[1],mean_tmean[2],mean_tmean[3],mean_tmean[4],mean_tmean[5],mean_vpdmax[1],mean_vpdmax[2],mean_vpdmax[3],mean_vpdmax[4],mean_vpdmax[5],mean_windspeed[1],mean_windspeed[2],mean_windspeed[3],mean_windspeed[4],mean_windspeed[5])
+  pas = cbind(firename,year1,cause,size[1],size[2],size[3],size[4],size[5],final_firesize,mean_precip[1],mean_precip[2],mean_precip[3],mean_precip[4],mean_precip[5],mean_tmax[1],mean_tmax[2],mean_tmax[3],mean_tmax[4],mean_tmax[5],mean_tmean[1],mean_tmean[2],mean_tmean[3],mean_tmean[4],mean_tmean[5],mean_vpdmax[1],mean_vpdmax[2],mean_vpdmax[3],mean_vpdmax[4],mean_vpdmax[5],mean_windspeed[1],mean_windspeed[2],mean_windspeed[3],mean_windspeed[4],mean_windspeed[5],max_land,eco1,biomass,elevation)
   size_dat =rbind(size_dat,pas)
 }
 
+write.table(size_dat, "/Users/stijnhantson/Documents/projects/VIIRS_ros/fire_growth_5days_v4.txt",sep="\t")
+
 size_dat=as.data.frame(size_dat)
-colnames(size_dat)=c("firename","year","cause","size1","size2","size3","size4","size5","final_firesize","mean_precip1","mean_precip2","mean_precip3","mean_precip4","mean_precip5","mean_tmax1","mean_tmax2","mean_tmax3","mean_tmax4","mean_tmax5","mean_tmean1","mean_tmean2","mean_tmean3","mean_tmean4","mean_tmean5","mean_vpdmax1","mean_vpdmax2","mean_vpdmax3","mean_vpdmax4","mean_vpdmax5","mean_windspeed1","mean_windspeed2","mean_windspeed3","mean_windspeed4","mean_windspeed5")
+colnames(size_dat)=c("firename","year","cause","size1","size2","size3","size4","size5","final_firesize","mean_precip1","mean_precip2","mean_precip3","mean_precip4","mean_precip5","mean_tmax1","mean_tmax2","mean_tmax3","mean_tmax4","mean_tmax5","mean_tmean1","mean_tmean2","mean_tmean3","mean_tmean4","mean_tmean5","mean_vpdmax1","mean_vpdmax2","mean_vpdmax3","mean_vpdmax4","mean_vpdmax5","mean_windspeed1","mean_windspeed2","mean_windspeed3","mean_windspeed4","mean_windspeed5","landcover","ecosystem","biomass","elevation")
 
 size_dat2 <- data.frame(lapply(size_dat, function(x) as.numeric(as.character(x))))
 size_dat2$human = 0
-size_dat2$human[size_dat2$cause !=1 & size_dat2$cause !=14]=1
+size_dat2$human[size_dat2$cause !=1 & size_dat2$cause !=14 & size_dat2$cause !=17]=1
 size_dat2$human[size_dat2$cause ==1 ]=2
 
 rbPal <- colorRampPalette(c('white','red','blue'))
@@ -290,6 +331,58 @@ test<- lm((log10(size3+1))~mean_windspeed1+mean_tmax1+mean_tmean1+mean_vpdmax1,d
 model2 = step(test,direction = "both")
 summary(model2)
 model2=update(model2,~.-mean_tmax1)
+
+plot(size_dat2$size1,size_dat2$elevation)
+pro =size_dat2[which(size_dat2$ecosystem == 11), ]
+plot(pro$size1,pro$elevation)
+
+
+########## final figures ######
+pro =size_dat2[which(size_dat2$human == 1 & size_dat2$landcover == 1), ]
+length(pro$year)
+boxplot(pro$size1,pro$size2,pro$size3,pro$size4,pro$size5,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,250), cex.lab=1.4,cex.axis = 1.3)
+
+pro =size_dat2[which(size_dat2$human == 2 & size_dat2$landcover == 1), ]
+length(pro$year)
+boxplot(pro$size1,pro$size2,pro$size3,pro$size4,pro$size5,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,250), cex.lab=1.4,cex.axis = 1.3)
+
+pro =size_dat2[which(size_dat2$human == 1 & size_dat2$landcover == 2), ]
+length(pro$year)
+boxplot(pro$size1,pro$size2,pro$size3,pro$size4,pro$size5,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,500), cex.lab=1.4,cex.axis = 1.3)
+
+pro =size_dat2[which(size_dat2$human == 2 & size_dat2$landcover == 2), ]
+length(pro$year)
+boxplot(pro$size1,pro$size2,pro$size3,pro$size4,pro$size5,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,500), cex.lab=1.4,cex.axis = 1.3)
+length(!is.na(pro$size5))
+
+
+plot(size_dat2$mean_windspeed1,log10(size_dat2$size1+1))
+pro =size_dat2[which(size_dat2$human == 1),]
+points(pro$mean_windspeed1,log10(pro$size1+1),col="red")
+pro =size_dat2[which(size_dat2$human == 0),]
+points(pro$mean_windspeed1,log10(pro$size1+1),col="grey")
+
+pro1 =size_dat2[which(size_dat2$human == 1& size_dat2$landcover == 1),]
+pro2 =size_dat2[which(size_dat2$human == 2& size_dat2$landcover == 1),]
+boxplot(pro1$mean_windspeed1,pro2$mean_windspeed1,names=c("human","lightning"),ylab="wind speed (m/h)", cex.lab=1.4,cex.axis = 1.3)
+boxplot(pro1$biomass,pro2$biomass,names=c("human","lightning"),ylab="biomass (kg/ha)", cex.lab=1.4,cex.axis = 1.3,ylim=c(0,500000))
+boxplot(pro1$elevation,pro2$elevation,names=c("human","lightning"),ylab="elevation (m)", cex.lab=1.4,cex.axis = 1.3,ylim=c(0,3000))
+
+t.test(pro1$biomass,pro2$biomass)
+t.test(pro1$mean_windspeed1,pro2$mean_windspeed1)
+t.test(pro1$elevatio,pro2$elevatio)
+pro=size_dat2[which( size_dat2$landcover == 1),]
+l_mo = (lm(log10(pro$size1+1)~ pro$biomass + pro$mean_windspeed1 + pro$elevation ))
+library(relaimpo)
+
+calc.relimp(l_mo, type = c("lmg"), rela = TRUE)
+
+
+size_dat3=size_dat2[which(size_dat2$mean_windspeed1 >0),]
+
+
+summary(lm((log10(size_dat3$size2*100)~(log10(size_dat3$size1*100)) + size_dat3$mean_vpdmax2 )))
+summary(lm((log10(size_dat3$size3*100)~size_dat3$mean_windspeed1 + size_dat3$mean_vpdmax1 )))
 
 
 ########################  analysis of surface burnt  ###################
@@ -630,6 +723,7 @@ tab=as.matrix(tab)
 landcover=reclassify(land,tab)
 landcover[landcover == 3 | landcover == 4  |  landcover == 6 |  landcover == 8 | landcover == 9 | landcover == 10] = 2
 
+bio = raster("/Users/stijnhantson/Documents/data/2010_Biomass.tif")
 
 viirs_all=shapefile(viirs_list[1])
 result = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
@@ -818,7 +912,7 @@ for (p in 1:length(viirs_list)){
       tmmx = as.data.frame(extract(l_tmmx, viirs1))
       vpd = as.data.frame(extract(l_vpd, viirs1))
       vs = as.data.frame(extract(l_vs, viirs1))
-      
+      biomass= as.data.frame(extract(bio, viirs1))
  #     te =as.matrix(cbind(bi,erc,etr,fm100,fm1000,pet,pr,rmax,rmin,th,tmmn,tmmx,vpd,vs,ws,growth,total_area))
   #    colnames(te) = c("bi","erc","etr","fm100","fm1000","pet","pr","rmax","rmin","th","tmmn","tmmx","vpd","vs","ws","growth","tot_area")
  #     
@@ -839,12 +933,13 @@ for (p in 1:length(viirs_list)){
       tmmx = mean(tmmx[,1])
       vpd = mean(vpd[,1])
       vs = mean(vs[,1])
-      
+      biomass= mean(biomass[,1])
       land_samp = extract(landcover,fire_new,na.rm=T)
       max_land = names(which.max(table(land_samp)))
       
       if (length(max_land) < 1){
         max_land = NA
+        biomass = NA
       }
       
       mean_ros = mean(viirs1$ros)
@@ -854,7 +949,7 @@ for (p in 1:length(viirs_list)){
       mean_frp = mean(viirs1$FRP)
       frp_95 = quantile(viirs1$FRP, 0.95)
       
-      dail = cbind(mean_ros,max_ros,median95_ros,bi,erc,etr,fm100,fm1000,pet,pr,rmax,rmin,th,tmmn,tmmx,vpd,vs,ws,growth,total_area, mean_frp, frp_95,max_land,firename)
+      dail = cbind(mean_ros,max_ros,median95_ros,bi,erc,etr,fm100,fm1000,pet,pr,rmax,rmin,th,tmmn,tmmx,vpd,vs,ws,growth,total_area, mean_frp, frp_95,max_land,firename,biomass)
       daily_res = rbind(daily_res, dail)
   #    result = rbind(result, viirs2)
       
@@ -864,9 +959,10 @@ for (p in 1:length(viirs_list)){
 
 
 writeOGR(result, "/Users/stijnhantson/Documents/projects/VIIRS_ros/", layer= "all_ros_meteo", driver="ESRI Shapefile", overwrite_layer = T)
-write.table(daily_res, "/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_meteo.txt",sep="\t")
+write.table(daily_res, "/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_meteo_V3.txt",sep="\t")
 
-daily_res=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_meteo.txt",header=T)
+daily_res=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_meteo_v2.txt",header=T)
+
 res=as.data.frame(daily_res)
 
 res$mean_ros =as.numeric(as.character(res$mean_ros))
@@ -892,6 +988,9 @@ res$total_area =as.numeric(as.character(res$total_area))
 res$mean_frp =as.numeric(as.character(res$mean_frp))
 res$frp_95 =as.numeric(as.character(res$frp_95))
 res$max_land =as.numeric(as.character(res$max_land))
+res$biomass =as.numeric(as.character(res$biomass))
+
+res = res[-1,]
 
 summary(res)
 
@@ -903,19 +1002,33 @@ res_f = res[res$max_land == 1,]
 res_p = res[res$max_land != 1,]
 
 
-summary(lm(log(res$median95_ros+1) ~ res$vpd+ res$ws, na.omit=T ))
-summary(lm(log(res_f$median95_ros+1) ~ res_f$vpd+ res_f$ws, na.omit=T ))
-summary(lm(log(res_p$median95_ros+1) ~ res_p$vpd+ res_p$ws, na.omit=T ))
+summary(lm(log(res$median95_ros+1) ~ res$vpd+ res$vs+res$biomass, na.omit=T ))
+summary(lm(log(res_f$median95_ros+1) ~ res_f$vpd+res_f$biomass, na.omit=T ))
+summary(lm(log(res_p$median95_ros+1) ~ res_p$vpd+ res_p$ws+res_p$biomass, na.omit=T ))
+
+summary(lm(log(res_f$median95_ros+1) ~ res_f$vs , na.omit=T ))
+
+
+## best relationships: etr=0.14, pet=0.12,tmmx=0.18, vpd=0.19
+plot(res_f$biomass,log(res_f$median95_ros+1))
 
 plot(res$tmmx,log(res$median95_ros+1))
 plot(res_f$tmmx,log(res_f$median95_ros+1))
 plot(res_p$tmmx,log(res_p$median95_ros+1))
 
+plot(res$vpd ,log(res$median95_ros+1))
+plot(res_f$vpd,log(res_f$median95_ros+1))
+plot(res_p$vpd,log(res_p$median95_ros+1))
+
+options(scipen=10)
 
 plot(log(res$mean_frp+1),log(res$median95_ros+1))
-plot(res$mean_frp,res$median95_ros)
-summary(lm(log(res$mean_frp+1)~log(res$median95_ros+1)))
+plot(res_f$mean_frp~res_f$median95_ros,log="xy",xlim=c(0.1,800),ylim=c(0.1,180),ylab="mean FRP (MW)",xlab="95% RoS (m/h)", cex.lab=1.4,cex.axis = 1.3)
+plot(res_p$mean_frp~res_p$median95_ros,log="xy",xlim=c(0.1,800),ylim=c(0.1,180),ylab="mean FRP (MW)",xlab="95% RoS (m/h)", cex.lab=1.4 ,cex.axis = 1.3)
+summary(lm(log(res$median95_ros)~log(res$mean_frp),na.omit=T))
 
+plot(res$mean_frp,res$median95_ros)
+abline(lm(res$median95_ros~res$mean_frp))
 
 plot(res$vpd,log10(res$median95_ros+1))
 plot(res$ws,log10(res$median95_ros+1),xlim=c(0,6))
@@ -943,6 +1056,18 @@ plot(res1$vpd,log10(res1$median95_ros))
 plot(res1$vpd,res1$median95_ros)
 
 
+ #############  figures for paper   #######################
+
+res$log95ros = log(res$median95_ros)
+res$log95ros[res$log95ros == -Inf] = NA
+
+plot(res_f$mean_frp~res_f$median95_ros,log="xy",xlim=c(0.1,800),ylim=c(0.1,180),ylab="mean FRP (MW)",xlab="95% RoS (m/h)", cex.lab=1.4,cex.axis = 1.3,col="darkgreen")
+#plot(res_p$mean_frp~res_p$median95_ros,log="xy",xlim=c(0.1,800),ylim=c(0.1,180),ylab="mean FRP (MW)",xlab="95% RoS (m/h)", cex.lab=1.4 ,cex.axis = 1.3)
+points(res_p$mean_frp~res_p$median95_ros,col="orange")
+#summary(lm(log(res$median95_ros+1)~log(res$mean_frp+1),na.omit=T))
+#abline(lm(log(res$mean_frp)~res$log95ros))
+legend( x="topleft",legend=c("Forest","Grass & shrub"),col=c("darkgreen","orange"),cex=1.2,pch=1,bty = "n")
 
 
-
+plot(res_f$vpd,res_f$median95_ros,log="y",ylim=c(0.1,1200),ylab="95% RoS (m/h)",xlab="VPD (kPa)", cex.lab=1.4,cex.axis = 1.3)
+plot(res_p$vpd,res_p$median95_ros,log="y",ylim=c(0.1,1200),ylab="95% RoS (m/h)",xlab="VPD (kPa)", cex.lab=1.4,cex.axis = 1.3)
