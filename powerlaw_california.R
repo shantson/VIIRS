@@ -48,7 +48,7 @@ plot(m_m1)
 
 library(igraph)
 fit_power_law(as.integer(da90$GIS_ACRES),xmin=1000,start=-1.5,implementation="plfit",force.continuous
-=T)
+              =T)
 
 minsize = 2.7
 minsize1=10^minsize
@@ -148,39 +148,39 @@ p=1
 size = size1
 len=length(size)
 while (r == 0){
- k=k+1
-test1 <- size[size < data_interval[k]]
-binsize = 10^data_interval[k] - 10^data_interval[k-p]
-area1[q] <- log10(((length(test1[test1 >= data_interval[k-p]]))/binsize)/len)
-bin_center[q]<-log10(mean(c(10^data_interval[k], 10^data_interval[k-p]))) 	#el lower bound queda igual cuando no hubo valores en el anterior
+  k=k+1
+  test1 <- size[size < data_interval[k]]
+  binsize = 10^data_interval[k] - 10^data_interval[k-p]
+  area1[q] <- log10(((length(test1[test1 >= data_interval[k-p]]))/binsize)/len)
+  bin_center[q]<-log10(mean(c(10^data_interval[k], 10^data_interval[k-p]))) 	#el lower bound queda igual cuando no hubo valores en el anterior
+  
+  if (area1[q] != -Inf){
+    q=q+1
+    p=1
+  }else{
+    p=p+1
+  }
+  if (data_interval[k] > max(size)){
+    r=1
+  }
+}
 
-if (area1[q] != -Inf){
-q=q+1
-p=1
-}else{
-  p=p+1
-}
-if (data_interval[k] > max(size)){
-  r=1
-}
-}
+data_entrada1 <- data.frame(bin_center,area1)	#make data.frame for power law analysis
+data_entrada2 <- data.frame(bin_center,area1)	#make data.frame for power law analysis
+data_entrada3 <- data.frame(bin_center,area1)	#make data.frame for power law analysis
+data_entrada4 <- data.frame(bin_center,area1)	#make data.frame for power law analysis
 
-    data_entrada1 <- data.frame(bin_center,area1)	#make data.frame for power law analysis
-    data_entrada2 <- data.frame(bin_center,area1)	#make data.frame for power law analysis
-    data_entrada3 <- data.frame(bin_center,area1)	#make data.frame for power law analysis
-    data_entrada4 <- data.frame(bin_center,area1)	#make data.frame for power law analysis
-    
-    data_entrada1[ data_entrada1 == "-Inf"] <- NA 
-    data_entrada2[ data_entrada2 == "-Inf"] <- NA 
-    data_entrada3[ data_entrada3 == "-Inf"] <- NA 
-    data_entrada4[ data_entrada4 == "-Inf"] <- NA 
-    
+data_entrada1[ data_entrada1 == "-Inf"] <- NA 
+data_entrada2[ data_entrada2 == "-Inf"] <- NA 
+data_entrada3[ data_entrada3 == "-Inf"] <- NA 
+data_entrada4[ data_entrada4 == "-Inf"] <- NA 
+
 lm(area1 ~ bin_center, data=data_entrada1)
 lm(area1 ~ bin_center, data=data_entrada2)
 lm(area1 ~ bin_center, data=data_entrada3)
 lm(area1 ~ bin_center, data=data_entrada4)
 
-plot(data_entrada4, ylim=c(-9,-3), xlab="fire size (log10(acres))", ylab="log10(frequency)",col="white")
+plot(data_entrada1, ylim=c(-9,-3), xlab="fire size (log10(acres))", ylab="log10(frequency)",col="white")
 points(data_entrada1,col="orange")
 points(data_entrada2,col="red")
 points(data_entrada3,col="blue")
@@ -189,21 +189,21 @@ points(data_entrada4,col="green")
 legend( x="topright",legend=c("1980s :b = 1.889","1990s :b = 1.721","2000s :b = 1.729","2010s :b = 1.575 "),col=c("orange","red","blue","green"),cex=1.2,pch=1,bty = "n")
 legend( x="topright",legend=c("1980s","1990s","2000s","2010s"),col=c("orange","red","blue","green"),cex=1.2,pch=1,bty = "n")
 
-    coef<-summary(reg)$coefficients
-    slope<-coef[2,1]
-    intercep<-coef[1,1]
-    r_square<-summary(reg)$r.squared
-    
-    lmp <- function (modelobject) {			##to extract p-value
-      if (class(modelobject) != "lm") stop("Not an object of class 'lm' ")
-      f <- summary(modelobject)$fstatistic
-      p <- pf(f[1],f[2],f[3],lower.tail=F)
-      attributes(p) <- NULL
-      return(p)
-    }
-    
-    p_value<-lmp(reg)
-    
+coef<-summary(reg)$coefficients
+slope<-coef[2,1]
+intercep<-coef[1,1]
+r_square<-summary(reg)$r.squared
+
+lmp <- function (modelobject) {			##to extract p-value
+  if (class(modelobject) != "lm") stop("Not an object of class 'lm' ")
+  f <- summary(modelobject)$fstatistic
+  p <- pf(f[1],f[2],f[3],lower.tail=F)
+  attributes(p) <- NULL
+  return(p)
+}
+
+p_value<-lmp(reg)
+
 
 library(EnvStats)
 
@@ -213,9 +213,10 @@ bet=0
 res=0
 beta=1
 for (i in 1:100){
-beta = beta+0.01
-res[i] = (log((beta-1)/(((501^(beta*(-1))+1)-(130000^(beta*(-1))+1)))))-(beta*(log(geoMean(10^size1))))
-bet[i] = beta
+  beta = beta+0.01
+  res[i] = (log((beta-1)/(((501^(beta*(-1))+1)-(130000^(beta*(-1))+1)))))-(beta*(log(geoMean(10^size1))))
+  bet[i] = beta
 }
 
 cbind(res,bet)
+
