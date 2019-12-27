@@ -4,7 +4,7 @@ library(rgeos)
 library(lattice)
 
 ref_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/evaluation/reference_clean/"
-viirs_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/evaluation/VIIRS/"
+viirs_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/evaluation/VIIRS4/"
 
 #ref_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/evaluation/test/ref/"
 #viirs_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/evaluation/test/viirs/"
@@ -37,7 +37,7 @@ for (i in 1:length(ref_list)){
   res(t) <- 100
   
   if(max(ref_sh$DOY)>0){
-    
+  
   }else if(max(ref_sh$DOI)>0){
     ref_sh$DOY = ref_sh$DOI
   }else{
@@ -63,18 +63,18 @@ for (i in 1:length(ref_list)){
     }
     hour=(as.numeric(ref_sh$CaptTime)/100) 
     
-    hour[hour == 0] = 12
+    hour[hour == 0] = 12.00
     
     ref_sh$dat = as.Date(as.character(ref_sh$CaptDate), format= "%Y/%m/%d")
     
     ref_sh$DOY = as.numeric( strftime(ref_sh$dat,format = "%j"))
     
     hour1=as.numeric(lapply(hour, as.integer)) 
-    hour1[hour1 == 0] = 12
+#    hour1[hour1 == 0] = 12
     dec=(((hour-hour1)/60)*(1/24))*100
     ref_sh$DOY2=((hour1/24)+dec)+ ref_sh$DOY
     print(ref_sh$DOY2)
-    ref_sh$DOY = ref_sh$DOY2 - 0.44 # aprox. 10:30
+    ref_sh$DOY = ref_sh$DOY2 - 1 # aprox. 10:30
     ref_sh$DOY = as.numeric(lapply(ref_sh$DOY, as.integer)) 
     detections = sort(unique(ref_sh$DOY))
     len1=length(detections)
@@ -82,7 +82,7 @@ for (i in 1:length(ref_list)){
   }
   r2 <- rasterize(ref_sh, t, field=ref_sh@data$DOY, fun = min, background = -9999)
   
-  outname=paste("/Users/stijnhantson/Documents/projects/VIIRS_ros/evaluation/test/",names[i],".tif",sep="")
+  outname=paste("/Users/stijnhantson/Documents/projects/VIIRS_ros/evaluation/ref_min1/",names[i],".tif",sep="")
   writeRaster(r2,outname,overwrite=T)
   
 }
@@ -112,14 +112,15 @@ for (i in 1:length(viirs_list)){
   
   r2 <- rasterize(viirs_sh, t, field=viirs_sh@data$DOY, fun = min, background = -9999)
   
-  outname=paste("/Users/stijnhantson/Documents/projects/VIIRS_ros/evaluation/test/",names[i],"_viirs.tif",sep="")
+  outname=paste("/Users/stijnhantson/Documents/projects/VIIRS_ros/evaluation/",names[i],"_viirs.tif",sep="")
   writeRaster(r2,outname,overwrite=T)
   
 }
 
 ############# produce statistics of viirs performance
 
-ras_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/evaluation/test/"
+
+ras_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/evaluation/ref_final/"
 ras_list =  list.files(ras_dir, pattern = ".tif$", recursive = TRUE, full.names=T)
 modis_list = list.files("/Users/stijnhantson/Documents/data/MCD64_v6/Win03/", pattern = "burndate.tif$", recursive = TRUE, full.names=T)
 
@@ -134,18 +135,19 @@ for (ras_sh in 1:((length(ras_list))/2)){
   t=t+1
   ref = raster(ras_list[t])  
   
-  mod_list = list.files(paste("/Users/stijnhantson/Documents/data/MCD64_v6/Win03/",year[ras_sh],sep=""), pattern = "burndate.tif$", recursive = TRUE, full.names=T)
+ mod_list = list.files(paste("/Users/stijnhantson/Documents/data/MCD64_v6/Win03/",year[ras_sh],sep=""), pattern = "burndate.tif$", recursive = TRUE, full.names=T)
   mod_stack=stack(mod_list)
   mod_stack=brick(mod_stack)
   mod_doy=max(mod_stack)
   mod = projectRaster(mod_doy, ref,method="ngb")
   mod[mod<1]=NA
-  plot(mod)
+#  plot(mod)
   
   mod[mod<1] = NA
   ref[ref<0] = NA
+ # ref[ref == (cellStats(ref,stat="min"))] = NA
   viirs[viirs<0] = NA
-  print(t)
+#  print(t)
   un = unique(ref)
   un2=diff(un)
   for (tt in 1:(length(un)-1)){
@@ -153,20 +155,12 @@ for (ras_sh in 1:((length(ras_list))/2)){
     if (un2[tt]>1){###remove observations where ref does not have daily continous observations
       ref[ref==un[tt2]] = NA
     }}
-  
-  
+  print(cellStats(ref,stat="min"))
+  print(cellStats(viirs,stat="min"))
+  print(cellStats(mod,stat="min"))  
   dif=viirs-ref
   dif2=mod-ref
-  
-  if (names[ras_sh]=="rough" | names[ras_sh]=="littles"){## these seem to have data taken in the morning
-    dif=dif+1
-    dif2=dif2+1
-  }
-  
-  if (names[ras_sh]=="WhiteBaldy"){## DOY not well calculated
-    dif=dif-1
-    dif2=dif2-1
-  }
+
   
   dif[dif> 400] = NA
   dif[dif< -400] = NA
@@ -176,14 +170,16 @@ for (ras_sh in 1:((length(ras_list))/2)){
   
   rmse=((sum((na.omit(values(dif)))^2))/length(na.omit(values(dif))))^0.5
   print(rmse)
+ print(quantile(dif,na.rm = T,probs=c(.5))) 
   rmse2=((sum((na.omit(values(dif2)))^2))/length(na.omit(values(dif2))))^0.5
   print(rmse2)
+  print(quantile(dif2,na.rm = T,probs=c(.5))) 
   
-  dif[dif> 5] = 5
-  dif[dif< -5] = -5
+#  dif[dif> 5] = 5
+#  dif[dif< -5] = -5
   
-  dif2[dif2> 5] = 5
-  dif2[dif2< -5] = -5
+#  dif2[dif2> 5] = 5
+#  dif2[dif2< -5] = -5
   
   dif_viirs = na.omit(values(dif))
   dif_mod = na.omit(values(dif2))
@@ -195,17 +191,24 @@ for (ras_sh in 1:((length(ras_list))/2)){
   
   #plot(histogram(dif2, breaks=seq(min(dif2)-0.5, max(dif2)+0.5, by=1), xlim=c(-5.5,5.5),type="density",col = rgb(0.1,0.1,0.1,0)))
   
-  plot(hist(dif_viirs, breaks=seq(min(dif_viirs)-0.5, max(dif_viirs)+0.5, by=1), xlim=c(-5.5,5.5),type="density",col = rgb(0.1,0.1,0.1,0),xlab=NULL,ylab=NULL,main=names[ras_sh]))
-  plot(hist(dif_mod, breaks=seq(min(dif_mod)-0.5, max(dif_mod)+0.5, by=1), xlim=c(-5.5,5.5),type="density",col = rgb(0.1,0.1,0.1,0),xlab=NULL,ylab=NULL,main=names[ras_sh]))
+# plot(hist(dif_viirs, breaks=seq(min(dif_viirs)-0.5, max(dif_viirs)+0.5, by=1), xlim=c(-5.5,5.5),type="density",col = rgb(0.1,0.1,0.1,0),xlab=NULL,ylab=NULL,main=names[ras_sh]))
+#  plot(hist(dif_mod, breaks=seq(min(dif_mod)-0.5, max(dif_mod)+0.5, by=1), xlim=c(-5.5,5.5),type="density",col = rgb(0.1,0.1,0.1,0),xlab=NULL,ylab=NULL,main=names[ras_sh]))
   
   #plot(dif,zlim=c(-5,5))
+  nam = paste("/Users/stijnhantson/Documents/projects/VIIRS_ros/evaluation/dif_",names[ras_sh],".jpg",sep="")
+  jpeg(nam, width = 1000, height = 1000)
+  pal <- colorRampPalette(c("red","grey95","blue"))
+  dif[dif>5]=6
+  dif[dif< (-6)]= -6
+  plot(dif, zlim=c(-6,6),col=pal(100))
+  dev.off()
 }
-dev.off()
+
 
 
 
 ############# validate fire growth  #####################
-ras_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/evaluation/test/"
+ras_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/evaluation/ref_final/"
 ras_list =  list.files(ras_dir, pattern = ".tif$", recursive = TRUE, full.names=T)
 modis_list = list.files("/Users/stijnhantson/Documents/data/MCD64_v6/Win03/", pattern = "burndate.tif$", recursive = TRUE, full.names=T)
 
@@ -227,40 +230,46 @@ for (ras_sh in 1:((length(ras_list))/2)){
   ref = raster(ras_list[t])  
   
   
-  if (names[ras_sh]=="rough" | names[ras_sh]=="littles"){## these seem to have data taken in the morning
-    ref=ref+1
-  }
-  if (names[ras_sh]=="WhiteBaldy"){## DOY not well calculated
-    ref=ref+1
-  }
+#  if (names[ras_sh]=="rough" | names[ras_sh]=="littles"){## these seem to have data taken in the morning
+#    ref=ref+1
+#  }
+ # if (names[ras_sh]=="WhiteBaldy"){## DOY not well calculated
+#    ref=ref+1
+#  }
   
-  if (names[ras_sh]=="bagley"){## DOY not well calculated
-    ref=ref-1
-  }
-  if (names[ras_sh]=="lake"){## DOY not well calculated
-    ref=ref-1
-  }
+ # if (names[ras_sh]=="bagley"){## DOY not well calculated
+#    ref=ref-1
+#  }
+#  if (names[ras_sh]=="lake"){## DOY not well calculated
+#    ref=ref-1
+#  }
   
-  mod_list = list.files(paste("/Volumes/MyBookDuo/MCD64_v6/Win03/",year[ras_sh],sep=""), pattern = "burndate.tif$", recursive = TRUE, full.names=T)
+  mod_list = list.files(paste("/Users/stijnhantson/Documents/data/MCD64_v6/Win03/",year[ras_sh],sep=""), pattern = "burndate.tif$", recursive = TRUE, full.names=T)
   mod_stack=stack(mod_list)
   mod_stack=brick(mod_stack)
   mod_doy=max(mod_stack)
   mod = projectRaster(mod_doy, ref,method="ngb")
   mod[mod<1]=NA
   # dev.off()
-  plot(mod)
-  mod1=as.list(mod1,mod)
+ # plot(mod)
+#  mod1=as.list(mod)
   
   viirs_u=unique(viirs)
   ref_u=unique(ref)
   days = unique(c(viirs_u,ref_u))
+  d_max = max(days)
+  d_min = min(days)
+  
   f_v=as.data.frame(freq(viirs))
   f_r=as.data.frame(freq(ref))
   f_m=as.data.frame(freq(mod))
-  
+  f_m=f_m[f_m$value < (d_max+10) & f_m$value > (d_min-10), ]
   ff = merge(f_v,f_r,by=c("value","value"),all=T)
+  
   ff= merge(ff,f_m,by=c("value","value"),all=T)
   ff=ff[!ff$value< (-999),]
+  
+  
   
   final_size_v[ras_sh] = sum(ff$count.x, na.rm=T)
   final_size_r[ras_sh] = sum(ff$count.y, na.rm=T)
@@ -281,16 +290,22 @@ ff1=ff1[-1,]
 ff2=na.omit(ff1)
 #ff2=na.omit(ff)
 
-plot(ff2$count.x,ff2$count.y,xlim=c(0,20000),ylim=c(0,20000))
-plot(ff2$count.y,ff2$count,xlim=c(0,20000),ylim=c(0,20000))
-plot(log10(ff2$count.x),log10(ff2$count.y),xlim=c(0,5),ylim=c(0,5))
-plot(log10(ff2$count),log10(ff2$count.y),xlim=c(0,5),ylim=c(0,5))
+plot(ff1$count.x,ff1$count.y,xlim=c(0,20000),ylim=c(0,20000))
+abline(0, 1, col="grey") 
+plot(ff1$count.y,ff1$count,xlim=c(0,20000),ylim=c(0,20000))
+abline(0, 1, col="grey") 
 
-lm(log(ff2$count.x+1)~log10(ff2$count.y+1),na.rm=T)
+plot(log10(ff1$count.x),log10(ff1$count.y),xlim=c(0,5),ylim=c(0,5))
+abline(0, 1, col="grey") 
+plot(log10(ff1$count),log10(ff1$count.y),xlim=c(0,5),ylim=c(0,5))
+abline(0, 1, col="grey") 
+
+summary(lm(log10(ff1$count.x)~log10(ff1$count.y),na.rm=T))
+summary(lm(log10(ff1$count)~log10(ff1$count.y),na.rm=T))
 
 plot(ff2$count.x,ff2$count.y)
-summary(lm(ff2$count.x~ff2$count.y))
-summary(lm(ff2$count~ff2$count.y))
+summary(lm(ff1$count.x~ff1$count.y))
+summary(lm(ff1$count~ff1$count.y))
 
 summary(lm(log10(ff2$count.x)~log10(ff2$count.y)))
 summary(lm(log10(ff2$count)~log10(ff2$count.y)))
