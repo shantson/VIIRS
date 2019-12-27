@@ -20,14 +20,14 @@ sep_dis = 1900                    #distance in m to seprate ignitions, 6 pixels 
 plot_gif = F                      # whether you want to output the png for each timestep
 only_night = T                    # daily or twice daily fire line
 
-out_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results4/"
+out_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results6/"
 out_dir2 = "/Users/stijnhantson/Documents/projects/VIIRS_ros/test/"
 
 mod = raster("/Users/stijnhantson/Documents/data/MCD64_v6/Win03/2000/MCD64monthly.A2000336.Win03.006.burndate.tif")
 viirs_dir="/Users/stijnhantson/Documents/data/VIIRS/global_archive"
-shape1 <- readOGR("/Users/stijnhantson/Documents/data/FRAP/firep17_1.shp") #readin FRAP fire perimeter data
+shape1 <- readOGR("/Users/stijnhantson/Documents/data/FRAP/fire18_1.shp") #readin FRAP fire perimeter data
 
-shape1 <- readOGR("/Users/stijnhantson/Documents/data/FRAP/FIREP18_DRAFT_DO_NOT_DISTRIBUTE/FIREP18_DRAFT_DO_NOT_DISTRIBUTE.shp")
+#shape1 <- readOGR("/Users/stijnhantson/Documents/data/FRAP/FIREP18_DRAFT_DO_NOT_DISTRIBUTE/FIREP18_DRAFT_DO_NOT_DISTRIBUTE.shp")
 
 shape1$YEAR=as.numeric(as.character(shape1$YEAR_)) 
 UseCores <- detectCores() -1
@@ -89,7 +89,7 @@ cl       <- makeCluster(UseCores)
 registerDoParallel(cl)
 
 #for (year in 2012:2017){
-foreach(year=2012:2017,.packages=c("sp","rgeos","alphahull","geosphere","igraph","png","rgdal","raster")) %dopar% {
+foreach(year=2012:2018,.packages=c("sp","rgeos","alphahull","geosphere","igraph","png","rgdal","raster")) %dopar% {
    
 #ra=mod1
 
@@ -129,9 +129,9 @@ nr_fire = 1
 
 
 
-foreach(nr_fire=1:length(shape2),.packages=c("sp","rgeos","alphahull","geosphere","igraph","png","rgdal","raster")) %dopar% {
+#foreach(nr_fire=1:length(shape2),.packages=c("sp","rgeos","alphahull","geosphere","igraph","png","rgdal","raster")) %dopar% {
   
-#for (nr_fire in 1:length(shape2)){  # perform analysis for each fire
+for (nr_fire in 1:length(shape2)){  # perform analysis for each fire
 #subset VIIRS data spatialy and temporaly
 
  fire = shape2[nr_fire,]
@@ -554,6 +554,10 @@ if (le > 1){
 }
 
 l2<-aggregate(l5, c("DOY","YYYYMMDD","YEAR","CAUSE")) 
+
+fire2 = aggregate(fire)   #agregate the reference fire perimeter
+l2 = intersect(l2, fire2)    # clip the 
+
 
 writeOGR(l2, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_daily",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
 writeOGR(ros, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_daily_ros",sep=""), driver="ESRI Shapefile", overwrite_layer = T)

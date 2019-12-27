@@ -19,11 +19,11 @@ library(png)
 library(maptools)
 library(cleangeo)
 
-sep_dis = 1500                    #distance in m to seprate ignitions
+sep_dis = 1800                    #distance in m to seprate ignitions
 plot_gif = F                      # whether you want to output the png for each timestep
 only_night = T                    # daily or twice daily fire line
 
-out_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/2012_day/"
+out_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/2012_day3/"
 
 mod = raster("/Users/stijnhantson/Documents/data/MCD64_v6/Win03/2000/MCD64monthly.A2000336.Win03.006.burndate.tif")
 viirs_dir="/Users/stijnhantson/Documents/data/VIIRS/global_archive"
@@ -135,7 +135,7 @@ registerDoParallel(cl)
  
 foreach(nr_fire=1:length(firesnames),.packages=c("sp","rgeos","alphahull","geosphere","igraph","png","rgdal","raster","cleangeo","maptools")) %dopar% {
   
-# for (nr_fire in 675:length(firesnames)){  # perform analysis for each fire
+# for (nr_fire in 1:length(firesnames)){  # perform analysis for each fire
     #subset VIIRS data spatialy and temporaly
     fire=subset(shape2, fire_num == firesnames[nr_fire])
     maxsize = max(fire$acres)
@@ -304,8 +304,10 @@ foreach(nr_fire=1:length(firesnames),.packages=c("sp","rgeos","alphahull","geosp
           }
         }
         
-        print("ign")
-        print(nr_ign)   
+
+        maxdoy1 = max(det$DOY)
+        maxyear1 = max(det$YYYYMMDD)
+        
         ign=1
         for (ign in 1:nr_ign){   #loop trough each seperate perimeter
           if (ign == 1){
@@ -355,8 +357,8 @@ foreach(nr_fire=1:length(firesnames),.packages=c("sp","rgeos","alphahull","geosp
                 y= det$lat
                 x=det$lon
                 pol2 = point2pol(x,y,det,TA)
-                pol2$DOY = det$DOY[1]
-                pol2$YYYYMMDD = det$YYYYMMDD[1]
+                pol2$DOY = maxdoy1
+                pol2$YYYYMMDD = maxyear1
                 pol2$HHMM = det$HHMM[1]
                 
                 l<-c(l,pol2)
@@ -371,8 +373,8 @@ foreach(nr_fire=1:length(firesnames),.packages=c("sp","rgeos","alphahull","geosp
                 center= spTransform(center,TA)
                 pol2 <- gBuffer( center, width=1, byid=TRUE )
                 
-                pol2$DOY = det$DOY[1]
-                pol2$YYYYMMDD = det$YYYYMMDD[1]
+                pol2$DOY = maxdoy1
+                pol2$YYYYMMDD = maxyear1
                 pol2$HHMM = det$HHMM[1]
                 pol2=pol2[,-1]
                 l<-c(l,pol2)
@@ -402,6 +404,7 @@ foreach(nr_fire=1:length(firesnames),.packages=c("sp","rgeos","alphahull","geosp
               det_new =  det_day[det_day$new == "FALSE",]
               
               maxdate = max(det_day$YYYYMMDD)
+              trs = det_day[det_day$YYYYMMDD==maxdate,]
               maxhour = max(det_day$HHMM)
               pre_maxdoy = max(pre_det$DOY)
               maxdoy = max(det_day$DOY)
@@ -476,8 +479,8 @@ foreach(nr_fire=1:length(firesnames),.packages=c("sp","rgeos","alphahull","geosp
                   dev.off()
                 }
                 
-                pol2$DOY = maxdoy
-                pol2$YYYYMMDD = maxdate
+                pol2$DOY = maxdoy1
+                pol2$YYYYMMDD = maxyear1
                 pol2$HHMM = maxhour
                 
                 l<-c(l,pol2)     # include new polygon in list of polygons
@@ -505,10 +508,64 @@ foreach(nr_fire=1:length(firesnames),.packages=c("sp","rgeos","alphahull","geosp
       }
     }
     
-    l2<-aggregate(l2, c("DOY","YYYYMMDD","HHMM")) 
+    li = unique(l2$DOY) ###### put polygons of the same day together
+    li_l = length(li)
+    l3=c()
+    for (lit in 1:li_l){
+      pss = l2[l2$DOY==li[lit],]
+      if (length(pss$DOY)>1){
+        pss =  aggregate(pss, c("DOY","YYYYMMDD","HHMM")) 
+      }
+      l3=c(l3,pss)
+    }
     
-    writeOGR(l2, out_dir, layer= paste(year,"_",fire$fire_name[1],"_eday",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
-    writeOGR(ros, out_dir, layer= paste(year,"_",fire$fire_name[1],"_ros_day",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
+    l4=c()######## intersect with posterior polgygons
+    pri = length(l3)
+    kr=1
+    for (kr in 1:(pri-1)){
+      print(kr)
+      plu=kr+1
+      plu1=kr+2
+      toge=l3[[plu]]
+      if (pri-plu > 0){
+        for (tr in plu1:pri){
+          toge=rbind(toge,l3[[tr]])
+        }
+      }
+      para=intersect(l3[[kr]],toge)
+      if (is.null(para)){
+        l4=c(l4,l3[[kr]])
+      }else{
+        para$area <- area(para)/1000000
+        min_ar = min(para$area)
+        para=para[para$area==min_ar,]
+        
+        para <- para[,-(4:9)]
+        names(para@data)[1] <- "DOY"
+        names(para@data)[2] <- "YYYYMMDD"
+        names(para@data)[3] <- "HHMM"
+        l4=c(l4,para)
+      }
+    }
+    l4=c(l4,l3[[pri]])
+    
+    
+    l5=c()
+    le = length(l4)
+    l5=l4[[1]]
+    if (le > 1){
+      for (tr in 2:le){
+        l5=rbind(l5,l4[[tr]])
+      }
+    }
+    
+    l2<-aggregate(l5, c("DOY","YYYYMMDD","HHMM")) 
+    
+    fire2 = aggregate(fire)   #agregate the reference fire perimeter
+    l2 = intersect(l2, fire2)    # clip the 
+    
+    writeOGR(l2, out_dir, layer= paste(year,"_",fire$fire_name[1],"_daily",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
+    writeOGR(ros, out_dir, layer= paste(year,"_",fire$fire_name[1],"_daily_ros",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
     
     #if (!is.na(ros$ros[1]) & length(ros) >1){
     # ros$Col <- rbPal(100)[as.numeric(cut(ros$ros,breaks = 100))]
