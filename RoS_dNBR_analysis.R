@@ -12,7 +12,8 @@ for (p in 1:length(li)){
 
 
 ################### analyse frap - DNBR  ####################
-
+library(rgdal)
+library(raster)
 inpath = "/Users/stijnhantson/Documents/data/MTBS/DATA"
 P4S.latlon <- CRS("+proj=longlat +datum=WGS84")
 frap=shapefile("/Users/stijnhantson/Documents/data/FRAP/fire18_1.shp")
@@ -20,23 +21,46 @@ frap=shapefile("/Users/stijnhantson/Documents/data/FRAP/fire18_1.shp")
 frap=subset(frap,YEAR_ > 1999)
 frap=subset(frap, GIS_ACRES>1000)
 
+#bast="/Users/stijnhantson/Documents/data/basal_area_reduction_fire_california/VegBurnSeverityBA18_1.gdb"
+#basal=readOGR(dsn=bast,layer="VegBurnSeverityBA")
 
-#land = raster("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/gaplf2011lc_v30_ca.tif")
+#basal=shapefile("/Users/stijnhantson/Documents/data/basal_area_reduction_fire_california/basal_area_reduction.shp")
+#basal$BAR=-9999
+#basal$BAR[basal$BURNSEV == 1] = 0
+#basal$BAR[basal$BURNSEV == 2] = 5
+#basal$BAR[basal$BURNSEV == 3] = 12.5
+#basal$BAR[basal$BURNSEV == 4] = 37.5
+#basal$BAR[basal$BURNSEV == 5] = 62.5
+#basal$BAR[basal$BURNSEV == 6] = 82.5
+#basal$BAR[basal$BURNSEV == 7] = 95
+#basal$BAR[basal$BURNSEV == 255] = -9999
+
+
+land = raster("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/gaplf2011lc_v30_ca.tif")
 tab = read.table("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/GAP_LANDFIRE_National_Terrestrial_Ecosystems_2011_Attributes.txt",sep="\t",header=T)
 tab=tab[,c("Value","CL")]
 tab=as.matrix(tab)
-#landcover=reclassify(land,tab)
+landcover=reclassify(land,tab)
 
 out=frap[1,]
 out$dnbr95 = NA
 out$mean_dnbr = NA
 out$rdnbr95 = NA
 out$mean_rdnbr = NA
+out$bas95 = NA
+out$mean_bas = NA
 out$lon = NA
 out$lat=NA
 out=out[0,]
-
-for (year in 2000:2016){
+bas=0
+for (year in 2012:2018){
+  print(year)
+#read annual Basal area reduction file
+  nam=paste("/Users/stijnhantson/Documents/data/basal_area_reduction_fire_california/annual/basal_area_",year,".shp",sep="")
+  bas = shapefile(nam)
+  bas = bas[bas$BAR > -1,]
+  bas=gBuffer(bas, width = 0, byid=TRUE ) 
+  
   frap_y =subset(frap,YEAR_ == year)
   dnbr =raster(paste(inpath,"/",year,"_dnbr.tif",sep=""))
   dnbr[dnbr < -2000] = NA
@@ -44,6 +68,7 @@ for (year in 2000:2016){
   rdnbr[rdnbr < -2000] = NA
   
   for (kk in 1:length(frap_y)){
+    print(kk)
   fire = frap_y[kk,]
   
   te = spTransform(fire,P4S.latlon)
@@ -51,7 +76,12 @@ for (year in 2000:2016){
   lon = centroids[1,1]
   lat = centroids[1,2]
   
-  
+  te2=spTransform(fire,crs(bas))
+
+  clip <- intersect(te2,bas) 
+  clip$area = area(clip)
+  sum(clip$da)/sum(clip$area)
+  plot(clip)
   dnbr_samp = extract(dnbr,fire,na.rm=TRUE)
   mean_dnbr = mean(dnbr_samp[[1]],na.rm=T)
   dnbr95 = quantile(dnbr_samp[[1]], 0.95,na.rm=T)
@@ -60,10 +90,16 @@ for (year in 2000:2016){
   mean_rdnbr = mean(rdnbr_samp[[1]],na.rm=T)
   rdnbr95 = quantile(rdnbr_samp[[1]], 0.95,na.rm=T)
   
+  bas_sample = extract(bas,fire,na.rm=TRUE)
+  mean_bas = mean(bas_samp[[1]],na.rm=T)
+  bas95 = quantile(dnbr_samp[[1]], 0.95,na.rm=T)
+  
   fire$dnbr95 = dnbr95
   fire$mean_dnbr = mean_dnbr
   fire$rdnbr95 = rdnbr95
   fire$mean_rdnbr = mean_rdnbr
+  fire$mean_bas = mean_bas
+  fire$bas95 = bas95
   fire$lon = lon
   fire$lat = lat
   
@@ -75,6 +111,8 @@ out$dnbr95 = as.numeric(as.character(out$dnbr95))
 out$mean_dnbr = as.numeric(as.character(out$mean_dnbr))
 out$rdnbr95 = as.numeric(as.character(out$rdnbr95))
 out$mean_rdnbr = as.numeric(as.character(out$mean_rdnbr))
+out$bas95 = as.numeric(as.character(out$bas95))
+out$mean_bas = as.numeric(as.character(out$mean_bas))
 out$lon = as.numeric(as.character(out$lon))
 out$lat=as.numeric(as.character(out$lat))
 out$CAUSE=as.numeric(as.character(out$CAUSE))
@@ -192,10 +230,10 @@ writeRaster(y1,outdir, overwrite = T)
 
 
 inpath = "/Users/stijnhantson/Documents/data/MTBS/DATA"
-inpath_viirs = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results4/"
+inpath_viirs = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results6/"
 nr_l = nchar(inpath_viirs)
 fun95 = function(x){quantile(x, 0.95)}
-data_s = c(NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA)
+data_s = c(NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA)
 P4S.latlon <- CRS("+proj=longlat +datum=WGS84")
 
 land = raster("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/gaplf2011lc_v30_ca.tif")
@@ -211,6 +249,11 @@ for (year in 2012:2017){
 
   rdnbr =raster(paste(inpath,"/",year,"_rdnbr.tif",sep=""))
   rdnbr[rdnbr < -2000] = NA
+  
+  nam=paste("/Users/stijnhantson/Documents/data/basal_area_reduction_fire_california/annual/basal_area_",year,".shp",sep="")
+  bas = shapefile(nam)
+  bas = bas[bas$BAR > -1,]
+  bas=gBuffer(bas, width = 0, byid=TRUE ) 
   
   lis= list.files(inpath_viirs ,pattern = "_daily.shp$", recursive = TRUE, full.names=T)
  viirs_list =  list.files(inpath_viirs, pattern = "daily_ros.shp$", recursive = TRUE, full.names=T)
@@ -249,15 +292,17 @@ for (year in 2012:2017){
       lat=NA
       land_samp=NA
       land_samp=NA
+      BA_red =NA
     }else{
       land_samp = extract(landcover,viirs_d,na.rm=T)
       max_land = names(which.max(table(land_samp)))
+      mean_land = mean(land_samp)
      if (area(viirs_d) > 10000){
       te = spTransform(viirs_d,P4S.latlon)
     centroids <- getSpPPolygonsLabptSlots(te)   #calculate centroids
     lon = centroids[1,1]
     lat = centroids[1,2]
-    
+    te2=spTransform(fire,crs(bas))
     
     dnbr_samp = extract(dnbr,viirs_d,na.rm=TRUE)
     rdnbr_samp = extract(rdnbr,viirs_d,na.rm=TRUE)
@@ -267,6 +312,11 @@ for (year in 2012:2017){
     
     mean_rdnbr=mean(rdnbr_samp[[1]],na.rm=T)
     rdnbr95=quantile(rdnbr_samp[[1]], 0.95,na.rm=T)
+    
+    clip <- intersect(te2,bas) 
+    clip$area = area(clip)
+    BA_red = sum(clip$da)/sum(clip$area)
+    
      }else{
        mean_dnbr = NA
        dnbr95 = NA
@@ -274,9 +324,10 @@ for (year in 2012:2017){
        lat=NA
        mean_rdnbr=NA
        rdnbr95=NA
+       BA_red=NA
      }
     }
-  dat = c(lon,lat,fire,nr_days,max_land,mean_ros,ros95, mean_dnbr,dnbr95,mean_rdnbr,rdnbr95)
+  dat = c(lon,lat,fire,nr_days,max_land,mean_land,mean_ros,ros95, mean_dnbr,dnbr95,mean_rdnbr,rdnbr95,BA_red)
   data_s = rbind(data_s,dat)
   mean_ros=0
   ros95=0
@@ -288,8 +339,10 @@ for (year in 2012:2017){
   lat=0
   coordinates = 0
   max_land = 0
+  mean_land = 0
   mean_rdnbr=0
   rdnbr95=0
+  BA_red=0
    }
   }
  }
@@ -301,7 +354,7 @@ rownames(data_s) <- c()
 data_s1 = as.data.frame(data_s)
 
 
-names(data_s1) = c("lon","lat","fire","nr_day","max_land","mean_ros","ros95","mean_dnbr","dnbr95","mean_rdnbr","rdnbr95")
+names(data_s1) = c("lon","lat","fire","nr_day","max_land","mean_land","mean_ros","ros95","mean_dnbr","dnbr95","mean_rdnbr","rdnbr95","BA_red")
 
 data_s1=na.omit(data_s1)
 data_s1$mean_ros =as.numeric(as.character(data_s1$mean_ros))

@@ -4,7 +4,7 @@ library(rgeos)
 library(lattice)
 
 ref_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/evaluation/reference_clean/"
-viirs_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/evaluation/VIIRS4/"
+viirs_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/evaluation/VIIRS6/"
 
 #ref_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/evaluation/test/ref/"
 #viirs_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/evaluation/test/viirs/"
@@ -74,7 +74,7 @@ for (i in 1:length(ref_list)){
     dec=(((hour-hour1)/60)*(1/24))*100
     ref_sh$DOY2=((hour1/24)+dec)+ ref_sh$DOY
     print(ref_sh$DOY2)
-    ref_sh$DOY = ref_sh$DOY2 - 1 # aprox. 10:30
+    ref_sh$DOY = ref_sh$DOY2 - 0.7 # aprox. 10:30
     ref_sh$DOY = as.numeric(lapply(ref_sh$DOY, as.integer)) 
     detections = sort(unique(ref_sh$DOY))
     len1=length(detections)
@@ -82,7 +82,7 @@ for (i in 1:length(ref_list)){
   }
   r2 <- rasterize(ref_sh, t, field=ref_sh@data$DOY, fun = min, background = -9999)
   
-  outname=paste("/Users/stijnhantson/Documents/projects/VIIRS_ros/evaluation/ref_min1/",names[i],".tif",sep="")
+  outname=paste("/Users/stijnhantson/Documents/projects/VIIRS_ros/evaluation/ref_min70/",names[i],".tif",sep="")
   writeRaster(r2,outname,overwrite=T)
   
 }
@@ -120,7 +120,7 @@ for (i in 1:length(viirs_list)){
 ############# produce statistics of viirs performance
 
 
-ras_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/evaluation/ref_final/"
+ras_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/evaluation/ref_min70/"
 ras_list =  list.files(ras_dir, pattern = ".tif$", recursive = TRUE, full.names=T)
 modis_list = list.files("/Users/stijnhantson/Documents/data/MCD64_v6/Win03/", pattern = "burndate.tif$", recursive = TRUE, full.names=T)
 
@@ -135,15 +135,15 @@ for (ras_sh in 1:((length(ras_list))/2)){
   t=t+1
   ref = raster(ras_list[t])  
   
- mod_list = list.files(paste("/Users/stijnhantson/Documents/data/MCD64_v6/Win03/",year[ras_sh],sep=""), pattern = "burndate.tif$", recursive = TRUE, full.names=T)
-  mod_stack=stack(mod_list)
-  mod_stack=brick(mod_stack)
-  mod_doy=max(mod_stack)
-  mod = projectRaster(mod_doy, ref,method="ngb")
-  mod[mod<1]=NA
+# mod_list = list.files(paste("/Users/stijnhantson/Documents/data/MCD64_v6/Win03/",year[ras_sh],sep=""), pattern = "burndate.tif$", recursive = TRUE, full.names=T)
+#  mod_stack=stack(mod_list)
+#  mod_stack=brick(mod_stack)
+#  mod_doy=max(mod_stack)
+#  mod = projectRaster(mod_doy, ref,method="ngb")
+#  mod[mod<1]=NA
 #  plot(mod)
   
-  mod[mod<1] = NA
+ # mod[mod<1] = NA
   ref[ref<0] = NA
  # ref[ref == (cellStats(ref,stat="min"))] = NA
   viirs[viirs<0] = NA
@@ -159,21 +159,21 @@ for (ras_sh in 1:((length(ras_list))/2)){
   print(cellStats(viirs,stat="min"))
   print(cellStats(mod,stat="min"))  
   dif=viirs-ref
-  dif2=mod-ref
+ # dif2=mod-ref
 
   
   dif[dif> 400] = NA
   dif[dif< -400] = NA
   
-  dif2[dif2> 400] = NA
-  dif2[dif2< -400] = NA
+#  dif2[dif2> 400] = NA
+#  dif2[dif2< -400] = NA
   
   rmse=((sum((na.omit(values(dif)))^2))/length(na.omit(values(dif))))^0.5
   print(rmse)
  print(quantile(dif,na.rm = T,probs=c(.5))) 
-  rmse2=((sum((na.omit(values(dif2)))^2))/length(na.omit(values(dif2))))^0.5
-  print(rmse2)
-  print(quantile(dif2,na.rm = T,probs=c(.5))) 
+ # rmse2=((sum((na.omit(values(dif2)))^2))/length(na.omit(values(dif2))))^0.5
+#  print(rmse2)
+#  print(quantile(dif2,na.rm = T,probs=c(.5))) 
   
 #  dif[dif> 5] = 5
 #  dif[dif< -5] = -5
@@ -182,7 +182,7 @@ for (ras_sh in 1:((length(ras_list))/2)){
 #  dif2[dif2< -5] = -5
   
   dif_viirs = na.omit(values(dif))
-  dif_mod = na.omit(values(dif2))
+ # dif_mod = na.omit(values(dif2))
   
   #hist(dif,xlim=c(-10,10),breaks=21)
   
@@ -253,7 +253,8 @@ for (ras_sh in 1:((length(ras_list))/2)){
   # dev.off()
  # plot(mod)
 #  mod1=as.list(mod)
-  
+ 
+   
   viirs_u=unique(viirs)
   ref_u=unique(ref)
   days = unique(c(viirs_u,ref_u))
@@ -284,6 +285,13 @@ for (ras_sh in 1:((length(ras_list))/2)){
   if (names[ras_sh] != "holloway"){
     ff1=rbind(ff1,ff)
   }}
+
+ff1=ff[-1,]
+plot(ff1$count.x,ff1$count.y)
+reg =lm(ff1$count.x~ff1$count.y)
+summary(reg)$r.squared
+coef(reg)[2]
+
 
 
 ff1=ff1[-1,]

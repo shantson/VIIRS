@@ -561,6 +561,7 @@ foreach(nr_fire=1:length(firesnames),.packages=c("sp","rgeos","alphahull","geosp
     
     l2<-aggregate(l5, c("DOY","YYYYMMDD","HHMM")) 
     
+    fire = gBuffer(fire, byid=TRUE, width=0)  # correct small topological errors
     fire2 = aggregate(fire)   #agregate the reference fire perimeter
     l2 = intersect(l2, fire2)    # clip the 
     

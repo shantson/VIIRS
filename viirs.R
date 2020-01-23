@@ -88,8 +88,8 @@ year=2012
 cl       <- makeCluster(UseCores)
 registerDoParallel(cl)
 
-#for (year in 2012:2017){
-foreach(year=2012:2018,.packages=c("sp","rgeos","alphahull","geosphere","igraph","png","rgdal","raster")) %dopar% {
+for (year in 2016:2018){
+#foreach(year=2012:2018,.packages=c("sp","rgeos","alphahull","geosphere","igraph","png","rgdal","raster")) %dopar% {
    
 #ra=mod1
 
@@ -210,7 +210,8 @@ sp=1
 l<-c()  
   while (sp < len1+1){        #move trough each timestep with the VIIRS data
     #list to save spatial polygon data in
-# print(sp)
+    print("day")
+ print(sp)
     det_day =  pts_in[pts_in$DOY <= detections[sp] & pts_in$DOY > (detections[sp] - time_dif),]  #VIIRS points at timestep
   det = pts_in[pts_in$DOY <= detections[sp],]         #VIIRS points before and at timestep
    pre_det = pts_in[pts_in$DOY < (detections[sp] - time_dif),]     #VIIRS points before timestep
@@ -390,13 +391,14 @@ pre_det = det[det$DOY < (detections[sp-1]- time_dif),]
 det_day$new = !is.na(over(det_day,buf_pol2))
 det_new =  det_day[det_day$new == "FALSE",]
 
+if (length(det_new) > 0){ #if there are no new thermal anomalies on the fire edge
 maxdate = max(det_day$YYYYMMDD)
 trs = det_day[det_day$YYYYMMDD==maxdate,]
 maxhour = max(trs$HHMM)
 pre_maxdoy = max(pre_det$DOY)
 maxdoy = max(det_day$DOY)
 
-if (length(det_new) > 0){ #if there are no new thermal anomalies on the fire edge
+
 
 #if (length(pre_det)<4){
 #  y= pre_det$lat
@@ -483,7 +485,7 @@ l<-c(l,pol2)     # include new polygon in list of polygons
       l2=rbind(l2,l[[tr]])
     }
   }
-# print(l2)
+ print("l2")
    }
 
 # pts_in$Col <- rbPal(100)[as.numeric(cut(pts_in$YYYYMMDD,breaks = 20))]
@@ -516,7 +518,7 @@ l4=c()######## intersect with posterior polgygons
 pri = length(l3)
 kr=1
 for (kr in 1:(pri-1)){
-  print(kr)
+ # print(kr)
    plu=kr+1
   plu1=kr+2
   toge=l3[[plu]]
@@ -555,8 +557,9 @@ if (le > 1){
 
 l2<-aggregate(l5, c("DOY","YYYYMMDD","YEAR","CAUSE")) 
 
+fire = gBuffer(fire, byid=TRUE, width=0) # correct small topological errors
 fire2 = aggregate(fire)   #agregate the reference fire perimeter
-l2 = intersect(l2, fire2)    # clip the 
+l2 = intersect(l2, fire)    # clip the 
 
 
 writeOGR(l2, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_daily",sep=""), driver="ESRI Shapefile", overwrite_layer = T)
