@@ -56,11 +56,8 @@ bas=0
 for (year in 2012:2018){
   print(year)
 #read annual Basal area reduction file
-  nam=paste("/Users/stijnhantson/Documents/data/basal_area_reduction_fire_california/annual/basal_area_",year,".shp",sep="")
-  bas = shapefile(nam)
-  bas = bas[bas$BAR > -1,]
-  bas=gBuffer(bas, width = 0, byid=TRUE ) 
-  
+  nam=paste("/Users/stijnhantson/Documents/data/basal_area_reduction_fire_california/basal_area_",year,".tif",sep="")
+  basal_area = raster(nam)
   frap_y =subset(frap,YEAR_ == year)
   dnbr =raster(paste(inpath,"/",year,"_dnbr.tif",sep=""))
   dnbr[dnbr < -2000] = NA
@@ -76,12 +73,13 @@ for (year in 2012:2018){
   lon = centroids[1,1]
   lat = centroids[1,2]
   
-  te2=spTransform(fire,crs(bas))
-
-  clip <- intersect(te2,bas) 
-  clip$area = area(clip)
-  sum(clip$da)/sum(clip$area)
-  plot(clip)
+  te2=spTransform(fire,crs(basal_area))
+  
+  land_samp = extract(landcover,fire,na.rm=T)
+  max_land = names(which.max(table(land_samp)))
+  mean_land1 =as.numeric(as.character(table(land_samp)))
+  mean_land = (mean_land1[1]+mean_land1[2]*2)/(sum(mean_land1))
+  
   dnbr_samp = extract(dnbr,fire,na.rm=TRUE)
   mean_dnbr = mean(dnbr_samp[[1]],na.rm=T)
   dnbr95 = quantile(dnbr_samp[[1]], 0.95,na.rm=T)
@@ -90,9 +88,9 @@ for (year in 2012:2018){
   mean_rdnbr = mean(rdnbr_samp[[1]],na.rm=T)
   rdnbr95 = quantile(rdnbr_samp[[1]], 0.95,na.rm=T)
   
-  bas_sample = extract(bas,fire,na.rm=TRUE)
+  bas_samp = extract(basal_area,fire,na.rm=TRUE)
   mean_bas = mean(bas_samp[[1]],na.rm=T)
-  bas95 = quantile(dnbr_samp[[1]], 0.95,na.rm=T)
+  bas95 = quantile(bas_samp[[1]], 0.95,na.rm=T)
   
   fire$dnbr95 = dnbr95
   fire$mean_dnbr = mean_dnbr
@@ -102,7 +100,8 @@ for (year in 2012:2018){
   fire$bas95 = bas95
   fire$lon = lon
   fire$lat = lat
-  
+  fire$max_land = max_land
+  fire$mean_land = mean_land
   out=rbind(out,fire)
   }
 }
@@ -116,6 +115,9 @@ out$mean_bas = as.numeric(as.character(out$mean_bas))
 out$lon = as.numeric(as.character(out$lon))
 out$lat=as.numeric(as.character(out$lat))
 out$CAUSE=as.numeric(as.character(out$CAUSE))
+out$max_land=as.numeric(as.character(out$max_land))
+out$mean_land=as.numeric(as.character(out$mean_land))
+
 
 shape = shapefile("/Users/stijnhantson/Documents/data/veg_california/ca_eco_l3/ca_eco_l3.shp")
 #pts <- SpatialPoints(out[,c("lon","lat")],P4S.latlon)
@@ -233,7 +235,7 @@ inpath = "/Users/stijnhantson/Documents/data/MTBS/DATA"
 inpath_viirs = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results6/"
 nr_l = nchar(inpath_viirs)
 fun95 = function(x){quantile(x, 0.95)}
-data_s = c(NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA)
+data_s = c(NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA)
 P4S.latlon <- CRS("+proj=longlat +datum=WGS84")
 
 land = raster("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/gaplf2011lc_v30_ca.tif")
@@ -250,10 +252,13 @@ for (year in 2012:2017){
   rdnbr =raster(paste(inpath,"/",year,"_rdnbr.tif",sep=""))
   rdnbr[rdnbr < -2000] = NA
   
-  nam=paste("/Users/stijnhantson/Documents/data/basal_area_reduction_fire_california/annual/basal_area_",year,".shp",sep="")
-  bas = shapefile(nam)
-  bas = bas[bas$BAR > -1,]
-  bas=gBuffer(bas, width = 0, byid=TRUE ) 
+  nam=paste("/Users/stijnhantson/Documents/data/basal_area_reduction_fire_california/basal_area_",year,".tif",sep="")
+  basal_area = raster(nam)
+
+ # nam=paste("/Users/stijnhantson/Documents/data/basal_area_reduction_fire_california/annual/basal_area_",year,".shp",sep="")
+ # bas = shapefile(nam)
+#  bas = bas[bas$BAR > -1,]
+#  bas=gBuffer(bas, width = 0, byid=TRUE ) 
   
   lis= list.files(inpath_viirs ,pattern = "_daily.shp$", recursive = TRUE, full.names=T)
  viirs_list =  list.files(inpath_viirs, pattern = "daily_ros.shp$", recursive = TRUE, full.names=T)
@@ -292,20 +297,25 @@ for (year in 2012:2017){
       lat=NA
       land_samp=NA
       land_samp=NA
-      BA_red =NA
+      BA_red95 =NA
+      mean_BA_red = NA
     }else{
       land_samp = extract(landcover,viirs_d,na.rm=T)
       max_land = names(which.max(table(land_samp)))
-      mean_land = mean(land_samp)
+      mean_land1 =as.numeric(as.character(table(land_samp)))
+      mean_land = (mean_land1[1]+mean_land1[2]*2)/(sum(mean_land1))
+      
      if (area(viirs_d) > 10000){
       te = spTransform(viirs_d,P4S.latlon)
     centroids <- getSpPPolygonsLabptSlots(te)   #calculate centroids
     lon = centroids[1,1]
     lat = centroids[1,2]
-    te2=spTransform(fire,crs(bas))
+  #  te2=spTransform(viirs_d,crs(bas))
+  #  te2=gBuffer(te2, width = 0, byid=TRUE ) 
     
     dnbr_samp = extract(dnbr,viirs_d,na.rm=TRUE)
     rdnbr_samp = extract(rdnbr,viirs_d,na.rm=TRUE)
+    basal_samp = extract(basal_area,viirs_d,na.rm=TRUE)
     
     mean_dnbr = mean(dnbr_samp[[1]],na.rm=T)
     dnbr95 = quantile(dnbr_samp[[1]], 0.95,na.rm=T)
@@ -313,9 +323,12 @@ for (year in 2012:2017){
     mean_rdnbr=mean(rdnbr_samp[[1]],na.rm=T)
     rdnbr95=quantile(rdnbr_samp[[1]], 0.95,na.rm=T)
     
-    clip <- intersect(te2,bas) 
-    clip$area = area(clip)
-    BA_red = sum(clip$da)/sum(clip$area)
+    mean_BA_red=mean(basal_samp[[1]],na.rm=T)
+    BA_red95=quantile(basal_samp[[1]], 0.95,na.rm=T)
+    
+  #  clip <- intersect(te2,bas) 
+  #  clip$area = area(clip)
+  #  BA_red = sum(clip$da)/sum(clip$area)
     
      }else{
        mean_dnbr = NA
@@ -324,10 +337,11 @@ for (year in 2012:2017){
        lat=NA
        mean_rdnbr=NA
        rdnbr95=NA
-       BA_red=NA
+       mean_BA_red=NA
+       BA_red95=NA
      }
     }
-  dat = c(lon,lat,fire,nr_days,max_land,mean_land,mean_ros,ros95, mean_dnbr,dnbr95,mean_rdnbr,rdnbr95,BA_red)
+  dat = c(lon,lat,fire,nr_days,max_land,mean_land,mean_ros,ros95, mean_dnbr,dnbr95,mean_rdnbr,rdnbr95,mean_BA_red,BA_red95)
   data_s = rbind(data_s,dat)
   mean_ros=0
   ros95=0
@@ -342,21 +356,23 @@ for (year in 2012:2017){
   mean_land = 0
   mean_rdnbr=0
   rdnbr95=0
-  BA_red=0
+  BA_red95=0
+  mean_BA_red=0
    }
   }
  }
+ gc()
 }
-
-write.table(data_s, "/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_dNBR_V2.txt",sep="\t")
-
+removeTmpFiles(24)
+write.table(data_s, "/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_dNBR_V3.txt",sep="\t")
+data_s=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_dNBR_V3.txt",row.names=NULL)
 rownames(data_s) <- c()
-data_s1 = as.data.frame(data_s)
+data_s1 = as.data.frame(data_s[,2:15])
 
 
-names(data_s1) = c("lon","lat","fire","nr_day","max_land","mean_land","mean_ros","ros95","mean_dnbr","dnbr95","mean_rdnbr","rdnbr95","BA_red")
+names(data_s1) = c("lon","lat","fire","nr_day","max_land","mean_land","mean_ros","ros95","mean_dnbr","dnbr95","mean_rdnbr","rdnbr95","mean_BA_red","BA_red95")
 
-data_s1=na.omit(data_s1)
+
 data_s1$mean_ros =as.numeric(as.character(data_s1$mean_ros))
 data_s1$ros95 =as.numeric(as.character(data_s1$ros95))
 data_s1$mean_dnbr =as.numeric(as.character(data_s1$mean_dnbr))
@@ -365,9 +381,13 @@ data_s1$mean_rdnbr =as.numeric(as.character(data_s1$mean_rdnbr))
 data_s1$rdnbr95 =as.numeric(as.character(data_s1$rdnbr95))
 data_s1$lon =as.numeric(as.character(data_s1$lon))
 data_s1$lat =as.numeric(as.character(data_s1$lat))
+
+data_s1$mean_land[is.na(data_s1$mean_land)]=data_s1$max_land[is.na(data_s1$mean_land)] #mean landcover gives NA when only one landcover is present
+data_s1$mean_land =as.numeric(as.character(data_s1$mean_land))
+data_s1$mean_BA_red =as.numeric(as.character(data_s1$mean_BA_red))
+data_s1$BA_red95 =as.numeric(as.character(data_s1$BA_red95))
+
 data_s1=na.omit(data_s1)
-
-
 shape = shapefile("/Users/stijnhantson/Documents/data/veg_california/ca_eco_l3/ca_eco_l3.shp")
 pts <- SpatialPoints(data_s1[,c("lon","lat")],P4S.latlon)
 shape = spTransform(shape,P4S.latlon)
@@ -386,13 +406,37 @@ plot(data_test$log_ros95, data_test$rdnbr95,xlab="log10 RoS 95p (m/hr)",ylab="95
 abline(lm(data_test$dnbr95~data_test$log_ros95))
 summary(lm(data_test$dnbr95~data_test$log_ros95))
 
-data_test = data_s1[data_s1$max_land == 2,]
+data_test = data_s1[data_s1$max_land == 1,]
 plot(log(data_test$mean_ros+1), data_test$mean_dnbr)
-plot(data_test$log_ros95, data_test$dnbr95,xlab="log10 RoS 95p (m/hr)",ylab="95p dNBR")
+plot(data_test$mean_ros, data_test$dnbr95,xlab="log10 RoS 95p (m/hr)",ylab="95p dNBR")
 abline(lm(data_test$dnbr95~data_test$log_ros95))
 summary(lm(data_test$dnbr95~data_test$log_ros95))
 summary(lm(data_test$mean_dnbr~data_test$log_ros))
 
+#for tranparent colors
+#library(scales)
+#cols=("black")
+#plot(data_test$ros95, data_test$mean_BA_red,log="x",xlab="Rate-of-Spread (m/hr)",ylab="Tree mortality (%)",xlim=c(0.2,1000),xaxt="n",col=alpha(cols,0.65))
+
+data_test = data_s1[data_s1$max_land == 1,]
+marks <- c(1,10,100,1000)
+
+tiff("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_basa_ros_v1.tif", width = 6, height = 5, units = 'in', res = 300)
+plot(data_test$ros95, data_test$mean_BA_red,log="x",xlab="Rate-of-Spread (m/hr)",ylab="Tree mortality (%)",xlim=c(0.25,900),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8)
+axis(1,at=marks,labels=marks,cex.axis=1.4 )
+#lines(lowess(data_test$ros95, data_test$mean_BA_red, f=0.41),col="black", lwd=3)
+dev.off()
+
+
+#abline(lm(data_test$mean_BA_red~data_test$log_ros95+(data_test$log_ros95^2)))
+model = lm(data_test$mean_BA_red~ poly(data_test$log_ros95,2))
+summary(model)
+predicted.intervals <- predict(model,data.frame(x=data_test$log_ros95),interval='confidence',
+                               level=0.99)
+
+lines(data_test$log_ros95,predicted.intervals[,1],col='green',lwd=3)
+lines(data_test$log_ros95,predicted.intervals[,2],col='black',lwd=1)
+lines(data_test$log_ros95,predicted.intervals[,3],col='black',lwd=1)
 
 plot(log(data_s1$mean_ros+1), data_s1$mean_dnbr)
 plot(log(data_s1$ros95 +1), data_s1$dnbr95)
