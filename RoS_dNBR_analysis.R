@@ -41,6 +41,9 @@ tab = read.table("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/
 tab=tab[,c("Value","CL")]
 tab=as.matrix(tab)
 landcover=reclassify(land,tab)
+landcover[landcover == 3 | landcover == 4  |  landcover == 6 |  landcover == 8 | landcover == 9 | landcover == 10] = 2
+bio = raster("/Users/stijnhantson/Documents/data/2010_Biomass.tif")
+dem = raster("/Users/stijnhantson/Documents/data/output_srtm.tif")
 
 out=frap[1,]
 out$dnbr95 = NA
@@ -51,9 +54,13 @@ out$bas95 = NA
 out$mean_bas = NA
 out$lon = NA
 out$lat=NA
+out$max_land = NA
+out$mean_land = NA
+out$biomass = NA
+out$elevation = NA
 out=out[0,]
 bas=0
-for (year in 2012:2018){
+for (year in 2012:2017){
   print(year)
 #read annual Basal area reduction file
   nam=paste("/Users/stijnhantson/Documents/data/basal_area_reduction_fire_california/basal_area_",year,".tif",sep="")
@@ -77,46 +84,70 @@ for (year in 2012:2018){
   
   land_samp = extract(landcover,fire,na.rm=T)
   max_land = names(which.max(table(land_samp)))
-  mean_land1 =as.numeric(as.character(table(land_samp)))
-  mean_land = (mean_land1[1]+mean_land1[2]*2)/(sum(mean_land1))
+  if (is.null(max_land)){
+    max_land = NA
+  }
+  mean_land1 =as.numeric(as.character(unlist(land_samp)))
+  mean_land = mean(mean_land1)
+  
+  biom = extract(bio,fire,na.rm=T)
+  biomass = mean(na.omit(as.numeric(unlist((biom)))))
+  
+  dem1 = extract(dem,fire,na.rm=T)
+  elevation = mean(na.omit(as.numeric(unlist((dem1)))))
   
   dnbr_samp = extract(dnbr,fire,na.rm=TRUE)
   mean_dnbr = mean(dnbr_samp[[1]],na.rm=T)
   dnbr95 = quantile(dnbr_samp[[1]], 0.95,na.rm=T)
+  sd_dnbr = sd(dnbr_samp[[1]],na.rm=T)
   
   rdnbr_samp = extract(rdnbr,fire,na.rm=TRUE)
   mean_rdnbr = mean(rdnbr_samp[[1]],na.rm=T)
   rdnbr95 = quantile(rdnbr_samp[[1]], 0.95,na.rm=T)
+  sd_rdnbr = sd(rdnbr_samp[[1]],na.rm=T)
   
   bas_samp = extract(basal_area,fire,na.rm=TRUE)
   mean_bas = mean(bas_samp[[1]],na.rm=T)
   bas95 = quantile(bas_samp[[1]], 0.95,na.rm=T)
+  sd_bas = sd(bas_samp[[1]],na.rm=T)
   
   fire$dnbr95 = dnbr95
   fire$mean_dnbr = mean_dnbr
+  fire$sd_dnbr = sd_dnbr
+  
   fire$rdnbr95 = rdnbr95
   fire$mean_rdnbr = mean_rdnbr
+  fire$sd_rdnbr = sd_rdnbr
+  
   fire$mean_bas = mean_bas
   fire$bas95 = bas95
+  fire$sd_bas =sd_bas
   fire$lon = lon
   fire$lat = lat
   fire$max_land = max_land
   fire$mean_land = mean_land
+  fire$elevation = elevation
+  fire$biomass = biomass
   out=rbind(out,fire)
   }
 }
 
 out$dnbr95 = as.numeric(as.character(out$dnbr95))
 out$mean_dnbr = as.numeric(as.character(out$mean_dnbr))
+out$sd_dnbr = as.numeric(as.character(out$sd_dnbr))
 out$rdnbr95 = as.numeric(as.character(out$rdnbr95))
 out$mean_rdnbr = as.numeric(as.character(out$mean_rdnbr))
+out$sd_rdnbr = as.numeric(as.character(out$sd_rdnbr))
 out$bas95 = as.numeric(as.character(out$bas95))
 out$mean_bas = as.numeric(as.character(out$mean_bas))
+out$sd_bas = as.numeric(as.character(out$sd_bas))
 out$lon = as.numeric(as.character(out$lon))
 out$lat=as.numeric(as.character(out$lat))
 out$CAUSE=as.numeric(as.character(out$CAUSE))
 out$max_land=as.numeric(as.character(out$max_land))
 out$mean_land=as.numeric(as.character(out$mean_land))
+out$biomass=as.numeric(as.character(out$biomass))
+out$elevation=as.numeric(as.character(out$elevation))
 
 
 shape = shapefile("/Users/stijnhantson/Documents/data/veg_california/ca_eco_l3/ca_eco_l3.shp")
@@ -132,40 +163,42 @@ out$L3name = eco$US_L3NAME
 out$L1CODE = as.numeric(as.character(out$L1CODE))
 out$L3name=as.character(out$L3name)
 
+write.table(out,"/Users/stijnhantson/Documents/projects/VIIRS_ros/per_fire_info.txt", row.names = F)
 out_save = out
 
-out=subset(out_save,L1CODE == 11)
+out=subset(out_save,L1CODE == 11) #6 = north,10 =desert,11 = socal
 
 
-out1 = subset(out,CAUSE == 1)
+out1 = subset(out,CAUSE == 1)   #1=lightning; 14=unknown; 7=arson
 out2 = subset(out,CAUSE !=1 & CAUSE != 14)
 out3 = subset(out,CAUSE == 7)
 
 
-out1=subset(out1,GIS_ACRES>10000)
-out2=subset(out2,GIS_ACRES>10000)
-out3=subset(out3,GIS_ACRES>10000)
-
+#out1=subset(out1,GIS_ACRES>10000)
+#out2=subset(out2,GIS_ACRES>10000)
+#out3=subset(out3,GIS_ACRES>10000)
 
 mean(out1$dnbr95,na.rm=T)
 mean(out2$dnbr95,na.rm=T)
-mean(out3$dnbr95,na.rm=T)
 
 mean(out1$mean_dnbr,na.rm=T)
 mean(out2$mean_dnbr,na.rm=T)
-mean(out3$mean_dnbr,na.rm=T)
-
 
 mean(out1$rdnbr95,na.rm=T)
 mean(out2$rdnbr95,na.rm=T)
-mean(out3$rdnbr95,na.rm=T)
 
 mean(out1$mean_rdnbr,na.rm=T)
 mean(out2$mean_rdnbr,na.rm=T)
-mean(out3$mean_rdnbr,na.rm=T)
 
-plot(log(out1$GIS_ACRES),out1$dnbr95)
-plot(log(out2$GIS_ACRES),out2$dnbr95)
+mean(out1$bas95,na.rm=T)
+mean(out2$bas95,na.rm=T)
+
+mean(out1$mean_bas,na.rm=T)
+mean(out2$mean_bas,na.rm=T)
+
+
+#plot(log(out1$GIS_ACRES),out1$dnbr95)
+#plot(log(out2$GIS_ACRES),out2$dnbr95)
 
 t.test(out1$rdnbr95,out2$rdnbr95)
 t.test(out1$mean_rdnbr,out2$mean_rdnbr)
@@ -173,7 +206,12 @@ t.test(out1$mean_rdnbr,out2$mean_rdnbr)
 t.test(out1$dnbr95,out2$dnbr95)
 t.test(out1$mean_dnbr,out2$mean_dnbr)
 
-plot(out$)
+t.test(out1$bas95,out2$bas95)
+t.test(out1$mean_bas,out2$mean_bas)
+
+out1 = subset(out_save,CAUSE == 1)
+plot(out_save$mean_land,out_save$mean_rdnbr)
+points(out1$mean_land,out1$mean_rdnbr,col="red")
 
 
 #######################  make annual comoposite dNBR & rdNBR  ############################
@@ -245,6 +283,9 @@ tab=as.matrix(tab)
 landcover=reclassify(land,tab)
 landcover[landcover == 3 | landcover == 4  |  landcover == 6 |  landcover == 8 | landcover == 9 | landcover == 10] = 2
 
+bio = raster("/Users/stijnhantson/Documents/data/2010_Biomass.tif")
+dem = raster("/Users/stijnhantson/Documents/data/output_srtm.tif")
+
 for (year in 2012:2017){
  dnbr =raster(paste(inpath,"/",year,"_dnbr.tif",sep=""))
   dnbr[dnbr < -2000] = NA
@@ -299,11 +340,22 @@ for (year in 2012:2017){
       land_samp=NA
       BA_red95 =NA
       mean_BA_red = NA
+      elevation=NA
+      biomass=NA
     }else{
       land_samp = extract(landcover,viirs_d,na.rm=T)
       max_land = names(which.max(table(land_samp)))
-      mean_land1 =as.numeric(as.character(table(land_samp)))
-      mean_land = (mean_land1[1]+mean_land1[2]*2)/(sum(mean_land1))
+      if (is.null(max_land)){
+        max_land = NA
+      }
+      mean_land1 =as.numeric(as.character(unlist(land_samp)))
+      mean_land = mean(mean_land1)
+      
+      biom = extract(bio,viirs_d,na.rm=T)
+      biomass = mean(na.omit(as.numeric(unlist((biom)))))
+      
+      dem1 = extract(dem,viirs_d,na.rm=T)
+      elevation = mean(na.omit(as.numeric(unlist((dem1)))))
       
      if (area(viirs_d) > 10000){
       te = spTransform(viirs_d,P4S.latlon)
@@ -341,7 +393,7 @@ for (year in 2012:2017){
        BA_red95=NA
      }
     }
-  dat = c(lon,lat,fire,nr_days,max_land,mean_land,mean_ros,ros95, mean_dnbr,dnbr95,mean_rdnbr,rdnbr95,mean_BA_red,BA_red95)
+  dat = c(lon,lat,fire,nr_days,max_land,mean_land,elevation, biomass,mean_ros,ros95, mean_dnbr,dnbr95,mean_rdnbr,rdnbr95,mean_BA_red,BA_red95)
   data_s = rbind(data_s,dat)
   mean_ros=0
   ros95=0
@@ -358,19 +410,24 @@ for (year in 2012:2017){
   rdnbr95=0
   BA_red95=0
   mean_BA_red=0
+  elevation=0
+  biomass=0
    }
   }
- }
  gc()
+ 
+ }
 }
-removeTmpFiles(24)
+
 write.table(data_s, "/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_dNBR_V3.txt",sep="\t")
+removeTmpFiles(1)
+
 data_s=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_dNBR_V3.txt",row.names=NULL)
 rownames(data_s) <- c()
-data_s1 = as.data.frame(data_s[,2:15])
+data_s1 = as.data.frame(data_s[,2:17])
 
 
-names(data_s1) = c("lon","lat","fire","nr_day","max_land","mean_land","mean_ros","ros95","mean_dnbr","dnbr95","mean_rdnbr","rdnbr95","mean_BA_red","BA_red95")
+names(data_s1) = c("lon","lat","fire","nr_day","max_land","mean_land","elevation","biomass","mean_ros","ros95","mean_dnbr","dnbr95","mean_rdnbr","rdnbr95","mean_BA_red","BA_red95")
 
 
 data_s1$mean_ros =as.numeric(as.character(data_s1$mean_ros))
@@ -386,6 +443,8 @@ data_s1$mean_land[is.na(data_s1$mean_land)]=data_s1$max_land[is.na(data_s1$mean_
 data_s1$mean_land =as.numeric(as.character(data_s1$mean_land))
 data_s1$mean_BA_red =as.numeric(as.character(data_s1$mean_BA_red))
 data_s1$BA_red95 =as.numeric(as.character(data_s1$BA_red95))
+data_s1$biomass =as.numeric(as.character(data_s1$biomass))
+data_s1$elevation =as.numeric(as.character(data_s1$elevation))
 
 data_s1=na.omit(data_s1)
 shape = shapefile("/Users/stijnhantson/Documents/data/veg_california/ca_eco_l3/ca_eco_l3.shp")
@@ -399,6 +458,7 @@ data_s1$L1CODE =as.numeric(as.character(data_s1$L1CODE))
 data_s1$log_ros = log10(data_s1$mean_ros)
 data_s1$log_ros95 = log10(data_s1$ros95)
 data_s1 = data_s1[data_s1$mean_ros >0,]
+
 
 data_test = data_s1[data_s1$L1CODE == 11,]
 plot(log(data_test$mean_ros+1), data_test$mean_dnbr)

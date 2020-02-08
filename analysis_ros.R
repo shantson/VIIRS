@@ -3,11 +3,11 @@ library(raster)
 library(rgdal)
 library(foreign)
 
-viirs_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results4/"
+viirs_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results6/"
 prism_dir = "/Users/stijnhantson/Documents/data/PRISM/"
 ncep_dir = "/Users/stijnhantson/Documents/data/daily_ncdp_wind/"
 
-frap=shapefile("/Users/stijnhantson/Documents/data/FRAP/firep17_1.shp")
+frap=shapefile("/Users/stijnhantson/Documents/data/FRAP/fire18_1.shp")
 frap2=shapefile("/Users/stijnhantson/Documents/data/FRAP/FIREP18_DRAFT_DO_NOT_DISTRIBUTE/FIREP18_DRAFT_DO_NOT_DISTRIBUTE.shp")
 
 viirs_list =  list.files(viirs_dir, pattern = "daily_ros.shp$", recursive = TRUE, full.names=T)
@@ -541,13 +541,24 @@ if (hr == 24){
 
 
 
-viirs_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results4/"
+viirs_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results6/"
 gridmet_dir = "/Users/stijnhantson/Documents/data/gridmet/"
 
+land = raster("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/gaplf2011lc_v30_ca.tif")
+tab = read.table("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/GAP_LANDFIRE_National_Terrestrial_Ecosystems_2011_Attributes.txt",sep="\t",header=T)
+tab=tab[,c("Value","CL")]
+tab=as.matrix(tab)
+landcover=reclassify(land,tab)
+landcover[landcover == 3 | landcover == 4  |  landcover == 6 |  landcover == 8 | landcover == 9 | landcover == 10] = 2
 
-frap=shapefile("/Users/stijnhantson/Documents/data/FRAP/firep17_1.shp")
+bio = raster("/Users/stijnhantson/Documents/data/2010_Biomass.tif")
+dem = raster("/Users/stijnhantson/Documents/data/output_srtm.tif")
+
+
+frap=shapefile("/Users/stijnhantson/Documents/data/FRAP/fire18_1.shp")
 
 viirs_list =  list.files(viirs_dir, pattern = "daily_ros.shp$", recursive = TRUE, full.names=T)
+viirs_exp =  list.files(viirs_dir, pattern = "daily.shp$", recursive = TRUE, full.names=T)
 viirs_dbf =  list.files(viirs_dir, pattern = "daily_ros.dbf$", recursive = TRUE, full.names=T)
 
 viirs_all=shapefile(viirs_list[1])
@@ -562,21 +573,31 @@ for (p in 1:length(viirs_list)){
   if (length(rows_p$YYYYMMDD)>0){
     
     viirs_all=shapefile(viirs_list[p])
+    viirs_growth=shapefile(viirs_exp[p])
     
     dar = as.Date(viirs_all$dat) ####### time is in UTM, so we have the nighttime day as the day after which 
     viirs_all$date =format(dar,"%Y%m%d")
     viirs_all$DOY2 = as.integer(viirs_all$DOY - 0.5)
+    viirs_growth$DOY2 = as.integer(viirs_growth$DOY - 0.5)
     #summary(viirs_all)
     year = substring(dar[1],1,4)
     
     #plot(viirs_all$ros~viirs_all$FRP)
     #plot(log(viirs_all$ros),log(viirs_all$FRP))
     
+    total = viirs_growth[viirs_growth$YYYYMMDD == max(viirs_growth$YYYYMMDD) ,]
+    total_area = gArea(total) 
+    
+    
     days1 = unique(viirs_all$DOY2) 
     i=1
     for (i in 1:length(days1)){
      
       viirs1 = viirs_all[viirs_all$DOY2 == days1[i],]  
+      viirs_growth1 = viirs_growth[viirs_growth$DOY2 == days1[i],]  
+      if (length(viirs_growth1) > 0){
+        growth = gArea(viirs_growth1)  
+      }else{growth = NA}
       
       gridmet_list= list.files(gridmet_dir, pattern = paste(year,".nc$",sep=""), recursive = TRUE, full.names=T)
       
@@ -627,6 +648,21 @@ for (p in 1:length(viirs_list)){
       vpd = as.data.frame(extract(l_vpd, viirs1))
       vs = as.data.frame(extract(l_vs, viirs1))
       
+      land_samp = extract(landcover,viirs1,na.rm=T)
+      max_land = names(which.max(table(land_samp)))
+      if (is.null(max_land)){
+        max_land = NA
+      }
+      mean_land1 =as.numeric(as.character(unlist(land_samp)))
+      mean_land = mean(mean_land1)
+      
+      biom = extract(bio,viirs1,na.rm=T)
+      biomass = mean(na.omit(as.numeric(unlist((biom)))))
+      
+      dem1 = extract(dem,viirs1,na.rm=T)
+      elevation = mean(na.omit(as.numeric(unlist((dem1)))))
+      
+      
       te =as.matrix(cbind(bi,erc,etr,fm100,fm1000,pet,pr,rmax,rmin,th,tmmn,tmmx,vpd,vs))
       colnames(te) = c("bi","erc","etr","fm100","fm1000","pet","pr","rmax","rmin","th","tmmn","tmmx","vpd","vs")
       
@@ -652,7 +688,7 @@ for (p in 1:length(viirs_list)){
       mean_ros = mean(viirs1$ros)
       max_ros = max(viirs1$ros)
       median95_ros = quantile(viirs1$ros, 0.95)
-      dail = cbind(mean_ros,max_ros,median95_ros,bi,erc,etr,fm100,fm1000,pet,pr,rmax,rmin,th,tmmn,tmmx,vpd,vs)
+      dail = cbind(mean_ros,max_ros,median95_ros,bi,erc,etr,fm100,fm1000,pet,pr,rmax,rmin,th,tmmn,tmmx,vpd,vs,max_land,mean_land,biomass,elevation,growth,total_area)
       daily_res = rbind(daily_res, dail)
       result = rbind(result, viirs2)
       
