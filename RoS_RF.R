@@ -1,16 +1,45 @@
 
 
 
+daily_res=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_meteo.txt",header=T)
+res=as.data.frame(daily_res)
+summary(res)
 set.seed(42)
 library("iml")
 library("randomForest")
+library("rfUtilities")
+library("asbio")
+res=res[-1,]
 
-rf = randomForest(log_ros95 ~ biomass + mean_land , data = data_s1, ntree = 50)
+res$perc = res$growth/res$total_area
+res = res[res$perc <0.75,]
+res1=res[,3:21]
+res1$ws <- NULL
+res1=na.omit(res1)
+res1$logros = log10(res1$median95_ros +1 )
+res1=res1[,2:19]
+
+#res2=res1[res1$logros != 0,]
+rf = randomForest(logros ~ . , data = res1)
+partialPlot(rf,res1,biomass)
+rf.partial.ci(rf,res1,"logros","biomass",lci = 0.25, uci = 0.75)
+(vi=importance(rf))
+varImpPlot(rf)
+
+library(party)
+cf1 <- cforest(logros ~ . , data = res1,control=cforest_unbiased(mtry=6,ntree=500))
+varimp(cf1)
+varimp(cf1,conditional=TRUE)
+
+varImpPlot(cf1,conditional=TRUE)
+
+
+
 X = data_s1[which(names(data_s1) != "log_ros95")]
 predictor = Predictor$new(rf, data = X, y = data_s1$log_ros95)
 imp = FeatureImp$new(predictor, loss = "mae")
 plot(imp)
-ale = FeatureEffect$new(predictor, feature = "biomas")
+ale = FeatureEffect$new(predictor, feature = "tmmx")
 ale$plot()
 
 

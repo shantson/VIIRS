@@ -131,16 +131,18 @@ min(res$median95_ros)
 
 
 #############  predict fire size in future ###############
+library(rgeos)
+#land = raster("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/gaplf2011lc_v30_ca.tif")
+#tab = read.table("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/GAP_LANDFIRE_National_Terrestrial_Ecosystems_2011_Attributes.txt",sep="\t",header=T)
+#tab=tab[,c("Value","CL")]
+#tab=as.matrix(tab)
+#landcover=reclassify(land,tab)
+#landcover[landcover == 3 | landcover == 4  |  landcover == 6 |  landcover == 8 | landcover == 9 | landcover == 10] = 2
 
-land = raster("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/gaplf2011lc_v30_ca.tif")
-tab = read.table("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/GAP_LANDFIRE_National_Terrestrial_Ecosystems_2011_Attributes.txt",sep="\t",header=T)
-tab=tab[,c("Value","CL")]
-tab=as.matrix(tab)
-landcover=reclassify(land,tab)
-landcover[landcover == 3 | landcover == 4  |  landcover == 6 |  landcover == 8 | landcover == 9 | landcover == 10] = 2
+landcover=raster("/Users/stijnhantson/Documents/data/cal_tree_grass.tif")
 
 viirs_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results4/"
-frap=shapefile("/Users/stijnhantson/Documents/data/FRAP/firep17_1.shp")
+frap=shapefile("/Users/stijnhantson/Documents/data/FRAP/fire18_1.shp")
 frap2=shapefile("/Users/stijnhantson/Documents/data/FRAP/FIREP18_DRAFT_DO_NOT_DISTRIBUTE/FIREP18_DRAFT_DO_NOT_DISTRIBUTE.shp")
 frap2=subset(frap2, GIS_ACRES>1000)
 
@@ -164,7 +166,7 @@ mean_tmean = 0
 mean_vpdmax =0
 mean_windspeed = 0
 day_of_fire=0
-trala = 1
+trala = 13
 for (trala in 1:length(viirs_list)){
   print(trala)
   viirs=shapefile(viirs_list[trala])
@@ -177,7 +179,18 @@ for (trala in 1:length(viirs_list)){
   if ((length(frr$FIRE_NAME)) == 0){
     frr = subset(frap2, FIRE_NAME == firename)
   }
-  
+  if ((length(frr$FIRE_NAME)) > 1){
+    viirs$area = area(viirs)
+    maxarea = max(viirs$area)
+    viirs_sf = viirs[viirs$area == maxarea,]
+    viirs_sf = as(viirs_sf[1,], 'SpatialPolygons')
+    frr_sf = as(frr, 'SpatialPolygons')
+    
+    pi_sf = gIntersects(viirs_sf,frr_sf,byid=TRUE)
+    frr = frr[as.vector(pi_sf),]
+  }
+
+
   land_samp = extract(landcover,frr[1,],na.rm=T)
   max_land = names(which.max(table(land_samp)))
   
@@ -247,11 +260,15 @@ for (trala in 1:length(viirs_list)){
   }
   pas = cbind(firename,year1,cause,size[1],size[2],size[3],size[4],size[5],final_firesize,mean_precip[1],mean_precip[2],mean_precip[3],mean_precip[4],mean_precip[5],mean_tmax[1],mean_tmax[2],mean_tmax[3],mean_tmax[4],mean_tmax[5],mean_tmean[1],mean_tmean[2],mean_tmean[3],mean_tmean[4],mean_tmean[5],mean_vpdmax[1],mean_vpdmax[2],mean_vpdmax[3],mean_vpdmax[4],mean_vpdmax[5],mean_windspeed[1],mean_windspeed[2],mean_windspeed[3],mean_windspeed[4],mean_windspeed[5],max_land,eco1,biomass,elevation)
   size_dat =rbind(size_dat,pas)
+  pas = 0
 }
 
 write.table(size_dat, "/Users/stijnhantson/Documents/projects/VIIRS_ros/fire_growth_5days_v4.txt",sep="\t")
+size_dat=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/fire_growth_5days_v4.txt", header=T, row.names=NULL)
 
 size_dat=as.data.frame(size_dat)
+size_dat=size_dat[-1,]
+size_dat=size_dat[,-1]
 colnames(size_dat)=c("firename","year","cause","size1","size2","size3","size4","size5","final_firesize","mean_precip1","mean_precip2","mean_precip3","mean_precip4","mean_precip5","mean_tmax1","mean_tmax2","mean_tmax3","mean_tmax4","mean_tmax5","mean_tmean1","mean_tmean2","mean_tmean3","mean_tmean4","mean_tmean5","mean_vpdmax1","mean_vpdmax2","mean_vpdmax3","mean_vpdmax4","mean_vpdmax5","mean_windspeed1","mean_windspeed2","mean_windspeed3","mean_windspeed4","mean_windspeed5","landcover","ecosystem","biomass","elevation")
 
 size_dat2 <- data.frame(lapply(size_dat, function(x) as.numeric(as.character(x))))
@@ -338,13 +355,26 @@ plot(pro$size1,pro$elevation)
 
 
 ########## final figures ######
+#pro1 =size_dat2[which(size_dat2$human == 2 & size_dat2$landcover == 1 & size_dat2$ecosystem==11), ]
+#pro2 =size_dat2[which(size_dat2$human == 1 & size_dat2$landcover == 1 & size_dat2$ecosystem==11), ]
+
+pro1 =size_dat2[which(size_dat2$human == 2 & size_dat2$landcover == 1 ), ]
+pro2 =size_dat2[which(size_dat2$human == 1 & size_dat2$landcover == 1 ), ]
+
+t.test(pro1$size1,pro2$size1)
+t.test(pro1$size2,pro2$size2)
+t.test(pro1$size3,pro2$size3)
+t.test(pro1$size4,pro2$size4)
+t.test(pro1$size5,pro2$size5)
+
+
 pro =size_dat2[which(size_dat2$human == 1 & size_dat2$landcover == 1), ]
 length(pro$year)
-boxplot(pro$size1,pro$size2,pro$size3,pro$size4,pro$size5,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,250), cex.lab=1.4,cex.axis = 1.3)
+boxplot(pro$size1,pro$size2,pro$size3,pro$size4,pro$size5,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,500), cex.lab=1.4,cex.axis = 1.3)
 
 pro =size_dat2[which(size_dat2$human == 2 & size_dat2$landcover == 1), ]
 length(pro$year)
-boxplot(pro$size1,pro$size2,pro$size3,pro$size4,pro$size5,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,250), cex.lab=1.4,cex.axis = 1.3)
+boxplot(pro$size1,pro$size2,pro$size3,pro$size4,pro$size5,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,500), cex.lab=1.4,cex.axis = 1.3)
 
 pro =size_dat2[which(size_dat2$human == 1 & size_dat2$landcover == 2), ]
 length(pro$year)
@@ -354,6 +384,15 @@ pro =size_dat2[which(size_dat2$human == 2 & size_dat2$landcover == 2), ]
 length(pro$year)
 boxplot(pro$size1,pro$size2,pro$size3,pro$size4,pro$size5,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,500), cex.lab=1.4,cex.axis = 1.3)
 length(!is.na(pro$size5))
+
+
+pro =size_dat2[which(size_dat2$human == 1 & size_dat2$ecosystem == 6), ]
+length(pro$year)
+boxplot(pro$size1,pro$size2,pro$size3,pro$size4,pro$size5,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,500), cex.lab=1.4,cex.axis = 1.3)
+
+pro =size_dat2[which(size_dat2$human == 2& size_dat2$ecosystem == 6), ]
+length(pro$year)
+boxplot(pro$size1,pro$size2,pro$size3,pro$size4,pro$size5,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,500), cex.lab=1.4,cex.axis = 1.3)
 
 
 plot(size_dat2$mean_windspeed1,log10(size_dat2$size1+1))
@@ -371,8 +410,12 @@ boxplot(pro1$elevation,pro2$elevation,names=c("human","lightning"),ylab="elevati
 t.test(pro1$biomass,pro2$biomass)
 t.test(pro1$mean_windspeed1,pro2$mean_windspeed1)
 t.test(pro1$elevatio,pro2$elevatio)
+
+
+
 pro=size_dat2[which( size_dat2$landcover == 1),]
-l_mo = (lm(log10(pro$size1+1)~ pro$biomass + pro$mean_windspeed1 + pro$elevation ))
+l_mo = (lm(log10(size_dat2$size1+1)~ size_dat2$biomass + size_dat2$mean_windspeed1 + size_dat2$mean_windspeed1))
+summary(l_mo)
 library(relaimpo)
 
 calc.relimp(l_mo, type = c("lmg"), rela = TRUE)
@@ -540,7 +583,9 @@ if (hr == 24){
 
 
 
-
+library(raster)
+library(rgdal)
+library(rgeos)
 viirs_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results6/"
 gridmet_dir = "/Users/stijnhantson/Documents/data/gridmet/"
 
@@ -592,7 +637,7 @@ for (p in 1:length(viirs_list)){
     days1 = unique(viirs_all$DOY2) 
     i=1
     for (i in 1:length(days1)){
-     
+      
       viirs1 = viirs_all[viirs_all$DOY2 == days1[i],]  
       viirs_growth1 = viirs_growth[viirs_growth$DOY2 == days1[i],]  
       if (length(viirs_growth1) > 0){
@@ -650,11 +695,12 @@ for (p in 1:length(viirs_list)){
       
       land_samp = extract(landcover,viirs1,na.rm=T)
       max_land = names(which.max(table(land_samp)))
+      mean_land1 =as.numeric(as.character(unlist(land_samp)))
+      mean_land = mean(mean_land1,na.rm=T)
       if (is.null(max_land)){
         max_land = NA
-      }
-      mean_land1 =as.numeric(as.character(unlist(land_samp)))
-      mean_land = mean(mean_land1)
+        mean_land = NA
+      }      
       
       biom = extract(bio,viirs1,na.rm=T)
       biomass = mean(na.omit(as.numeric(unlist((biom)))))
@@ -683,7 +729,7 @@ for (p in 1:length(viirs_list)){
       tmmx = mean(tmmx[,1])
       vpd = mean(vpd[,1])
       vs = mean(vs[,1])
-
+      
       
       mean_ros = mean(viirs1$ros)
       max_ros = max(viirs1$ros)
@@ -696,14 +742,14 @@ for (p in 1:length(viirs_list)){
   }
 }    
 
-
+rownames(daily_res) <- NULL
 writeOGR(result, "/Users/stijnhantson/Documents/projects/VIIRS_ros/", layer= "all_ros_meteo", driver="ESRI Shapefile", overwrite_layer = T)
 write.table(daily_res, "/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_meteo.txt",sep="\t")
 
 daily_res=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_meteo.txt",header=T)
 res=as.data.frame(daily_res)
 
-summary(res)
+summary(res$max_ros)
 
 
 summary(lm(log(res$median95_ros) ~ res$vpd + res$bi, na.omit=T ))
@@ -741,23 +787,33 @@ plot(res1$vpd,res1$median95_ros)
 
 
 
-
-viirs_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results4/"
+library(rgeos)
+library(raster)
+library(rgdal)
+library(foreign)
+viirs_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results6/"
 gridmet_dir = "/Users/stijnhantson/Documents/data/gridmet/"
-wrf_data = "/Users/stijnhantson/Documents/data/wrf_UCLA/"
+wrf_data = "/Volumes/MyBookDuo/wrf_UCLA/"
 
-frap=shapefile("/Users/stijnhantson/Documents/data/FRAP/firep17_1.shp")
+frap=shapefile("/Users/stijnhantson/Documents/data/FRAP/fire18_1.shp")
+frap=subset(frap,YEAR_ > 2011)
+frap=subset(frap, GIS_ACRES>1000)
+frap2=shapefile("/Users/stijnhantson/Documents/data/FRAP/FIREP18_DRAFT_DO_NOT_DISTRIBUTE/FIREP18_DRAFT_DO_NOT_DISTRIBUTE.shp")
+frap2=subset(frap2, GIS_ACRES>1000)
 
-viirs_list =  list.files(viirs_dir, pattern = "daily_ros.shp$", recursive = TRUE, full.names=T)
-viirs_dbf =  list.files(viirs_dir, pattern = "daily_ros.dbf$", recursive = TRUE, full.names=T)
+viirs_list = list.files(viirs_dir, pattern = "daily_ros.shp$", recursive = TRUE, full.names=T)
+viirs_dbf = list.files(viirs_dir, pattern = "daily_ros.dbf$", recursive = TRUE, full.names=T)
 spread_list =list.files(viirs_dir, pattern = "_daily.shp$", recursive = TRUE, full.names=T)
 
-land = raster("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/gaplf2011lc_v30_ca.tif")
-tab = read.table("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/GAP_LANDFIRE_National_Terrestrial_Ecosystems_2011_Attributes.txt",sep="\t",header=T)
-tab=tab[,c("Value","CL")]
-tab=as.matrix(tab)
-landcover=reclassify(land,tab)
-landcover[landcover == 3 | landcover == 4  |  landcover == 6 |  landcover == 8 | landcover == 9 | landcover == 10] = 2
+#land = raster("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/gaplf2011lc_v30_ca.tif")
+#tab = read.table("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/GAP_LANDFIRE_National_Terrestrial_Ecosystems_2011_Attributes.txt",sep="\t",header=T)
+#tab=tab[,c("Value","CL")]
+#tab=as.matrix(tab)
+#landcover=reclassify(land,tab)
+#landcover[landcover == 3 | landcover == 4  |  landcover == 6 |  landcover == 8 | landcover == 9 | landcover == 10] = 2
+#landcover[landcover == 11] = NA
+#writeRaster(landcover,"/Users/stijnhantson/Documents/data/cal_tree_grass.tif",overwrite=T)
+landcover=raster("/Users/stijnhantson/Documents/data/cal_tree_grass.tif")
 
 bio = raster("/Users/stijnhantson/Documents/data/2010_Biomass.tif")
 
@@ -776,8 +832,30 @@ for (p in 1:length(viirs_list)){
     firespread <- readOGR(spread_list[p]) 
     firespread$DOY2 = as.integer(firespread$DOY - 0.5)
     firename = substring(viirs_list[p],71,(nchar(viirs_list[p])-14))
+    year1 = substring(viirs_list[p],66,69)
     
+    frr=subset(frap,YEAR_ == year1)
+    frr = subset(frr, FIRE_NAME == firename)
+    if ((length(frr$FIRE_NAME)) == 0){
+      frr = subset(frap2, FIRE_NAME == firename)
+    }
+    if ((length(frr$FIRE_NAME)) > 1){
+      viirs$area = area(viirs)
+      maxarea = max(viirs$area)
+      viirs_sf = viirs[viirs$area == maxarea,]
+      viirs_sf = as(viirs_sf[1,], 'SpatialPolygons')
+      frr_sf = as(frr, 'SpatialPolygons')
+      
+      pi_sf = gIntersects(viirs_sf,frr_sf,byid=TRUE)
+      frr = frr[as.vector(pi_sf),]
+    }
     
+    startdate =  as.Date(frr$ALARM_DATE)
+    if (is.na(startdate)){
+      startdate = as.Date((as.character(min(viirs$YYYYMMDD))[1]),"%Y%m%d")
+    }
+    start_doy=as.numeric( strftime( startdate,format = "%j"))
+
     
     dar = as.Date(viirs_all$dat) ####### time is in UTM, so we have the nighttime day as the day after which 
     viirs_all$date =format(dar,"%Y%m%d")
@@ -787,6 +865,10 @@ for (p in 1:length(viirs_list)){
     month = substring(dar,6,7)
     #plot(viirs_all$ros~viirs_all$FRP)
     #plot(log(viirs_all$ros),log(viirs_all$FRP))
+    
+    if (is.na(start_doy)){
+      start_doy=min(viirs_all$DOY2)
+    }
     
     inputyear=paste(year,"-01-01",sep="")
     days2 =  as.Date((unique(viirs_all$DOY2)-1) , origin = inputyear)
@@ -799,7 +881,7 @@ for (p in 1:length(viirs_list)){
   
     i=1
     for (i in 1:length(days1)){
-      
+      fire_day = days1[i] - start_doy
       print(paste("day", i))
       fire_new = firespread[firespread$DOY2 == days1[i] ,]
       if (length(fire_new) > 0){
@@ -972,10 +1054,14 @@ for (p in 1:length(viirs_list)){
       biomass= mean(biomass[,1])
       land_samp = extract(landcover,fire_new,na.rm=T)
       max_land = names(which.max(table(land_samp)))
+      mean_land1 =as.numeric(as.character(unlist(land_samp)))
+      mean_land = mean(mean_land1, na.rm=TRUE)
       
       if (length(max_land) < 1){
         max_land = NA
         biomass = NA
+        mean_land  = NA
+        
       }
       
       mean_ros = mean(viirs1$ros)
@@ -985,7 +1071,7 @@ for (p in 1:length(viirs_list)){
       mean_frp = mean(viirs1$FRP)
       frp_95 = quantile(viirs1$FRP, 0.95)
       
-      dail = cbind(mean_ros,max_ros,median95_ros,bi,erc,etr,fm100,fm1000,pet,pr,rmax,rmin,th,tmmn,tmmx,vpd,vs,ws,growth,total_area, mean_frp, frp_95,max_land,firename,biomass)
+      dail = cbind(mean_ros,max_ros,median95_ros,bi,erc,etr,fm100,fm1000,pet,pr,rmax,rmin,th,tmmn,tmmx,vpd,vs,ws,biomass,max_land,mean_land,growth,total_area, mean_frp, frp_95,firename,fire_day)
       daily_res = rbind(daily_res, dail)
   #    result = rbind(result, viirs2)
       
@@ -995,9 +1081,9 @@ for (p in 1:length(viirs_list)){
 
 
 writeOGR(result, "/Users/stijnhantson/Documents/projects/VIIRS_ros/", layer= "all_ros_meteo", driver="ESRI Shapefile", overwrite_layer = T)
-write.table(daily_res, "/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_meteo_V3.txt",sep="\t")
+write.table(daily_res, "/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_meteo_V3.txt",row.names = F, sep="\t")
 
-daily_res=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_meteo_v2.txt",header=T)
+daily_res=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_meteo_v3.txt",header=T)
 
 res=as.data.frame(daily_res)
 
@@ -1024,6 +1110,8 @@ res$total_area =as.numeric(as.character(res$total_area))
 res$mean_frp =as.numeric(as.character(res$mean_frp))
 res$frp_95 =as.numeric(as.character(res$frp_95))
 res$max_land =as.numeric(as.character(res$max_land))
+res$mean_land =as.numeric(as.character(res$mean_land))
+
 res$biomass =as.numeric(as.character(res$biomass))
 
 res = res[-1,]
