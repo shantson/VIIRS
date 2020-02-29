@@ -791,6 +791,7 @@ library(rgeos)
 library(raster)
 library(rgdal)
 library(foreign)
+library(ncdf4)
 viirs_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results6/"
 gridmet_dir = "/Users/stijnhantson/Documents/data/gridmet/"
 wrf_data = "/Volumes/MyBookDuo/wrf_UCLA/"
@@ -851,7 +852,9 @@ for (p in 1:length(viirs_list)){
     }
     
     startdate =  as.Date(frr$ALARM_DATE)
-    if (is.na(startdate)){
+    if (length(startdate)==0 ){
+      startdate = as.Date((as.character(min(viirs$YYYYMMDD))[1]),"%Y%m%d")
+    } else if (is.na(startdate)) {
       startdate = as.Date((as.character(min(viirs$YYYYMMDD))[1]),"%Y%m%d")
     }
     start_doy=as.numeric( strftime( startdate,format = "%j"))
@@ -874,7 +877,7 @@ for (p in 1:length(viirs_list)){
     days2 =  as.Date((unique(viirs_all$DOY2)-1) , origin = inputyear)
     days1 = unique(viirs_all$DOY2) 
   YYYYMMDD = unique(viirs_all$YYYYMMDD)
-  
+  doys1 =unique(firespread$DOY2)
   total = firespread[firespread$YYYYMMDD == max(firespread$YYYYMMDD) ,]
   total_area = gArea(total) 
   
@@ -1181,6 +1184,19 @@ plot(res1$vpd,res1$median95_ros)
 
 
  #############  figures for paper   #######################
+
+######### histogram RoS ##############
+res$ros1 = res$max_ros+1
+hist.a =hist(res$median95_ros,breaks =c(0,1,2,4,8,16,32,64,128,256,512,1024,2048),plot=F)
+plot(hist.a$count,type="h",xaxt="n",lwd=20,lend=2,xlab="Rate-of-Spread (m/hr.)",ylab="Count",cex.lab=1.4,cex.axis = 1.3,xlim=c(0,13))
+axis(1,at=(0:length(hist.a$mids)+0.5),labels=hist.a$breaks,xlab="Rate-of-Spread (m/hr.)",cex.axis = 1.3)
+
+data_s1=na.omit(data_s1)
+
+hist.a =hist(data_s1$ros95,breaks =c(0,1,2,4,8,16,32,64,128,256,512,1024,2048),plot=F)
+plot(hist.a$count,type="h",xaxt="n",lwd=20,lend=2,xlab="Rate-of-Spread (m/hr.)",ylab="Count",cex.lab=1.4,cex.axis = 1.3,xlim=c(0.9,12.3))
+axis(1,at=(0:length(hist.a$mids)+0.5),labels=hist.a$breaks,xlab="Rate-of-Spread (m/hr.)",cex.axis = 1.3)
+
 
 res$log95ros = log(res$median95_ros)
 res$log95ros[res$log95ros == -Inf] = NA
