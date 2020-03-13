@@ -20,7 +20,7 @@ sep_dis = 1900                    #distance in m to seprate ignitions, 6 pixels 
 plot_gif = F                      # whether you want to output the png for each timestep
 only_night = T                    # daily or twice daily fire line
 
-out_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results6/"
+out_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results7/"
 out_dir2 = "/Users/stijnhantson/Documents/projects/VIIRS_ros/test/"
 
 mod = raster("/Users/stijnhantson/Documents/data/MCD64_v6/Win03/2000/MCD64monthly.A2000336.Win03.006.burndate.tif")
@@ -557,9 +557,9 @@ if (le > 1){
 
 l2<-aggregate(l5, c("DOY","YYYYMMDD","YEAR","CAUSE")) 
 
-fire = gBuffer(fire, byid=TRUE, width=0) # correct small topological errors
-fire2 = aggregate(fire)   #agregate the reference fire perimeter
-l2 = intersect(l2, fire)    # clip the 
+#fire = gBuffer(fire, byid=TRUE, width=0) # correct small topological errors
+#fire2 = aggregate(fire)   #agregate the reference fire perimeter
+#l2 = intersect(l2, fire)    # clip the 
 
 
 writeOGR(l2, out_dir, layer= paste(year,"_",fire$FIRE_NAME[1],"_daily",sep=""), driver="ESRI Shapefile", overwrite_layer = T)

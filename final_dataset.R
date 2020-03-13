@@ -33,6 +33,9 @@ spread_list =list.files(viirs_dir, pattern = "_daily.shp$", recursive = TRUE, fu
 #landcover[landcover == 11] = NA
 #writeRaster(landcover,"/Users/stijnhantson/Documents/data/cal_tree_grass.tif",overwrite=T)
 landcover=raster("/Users/stijnhantson/Documents/data/cal_tree_grass.tif")
+shape = shapefile("/Users/stijnhantson/Documents/data/veg_california/ca_eco_l3/ca_eco_l3.shp")
+shape = spTransform(shape,crs(frr))
+
 
 bio = raster("/Users/stijnhantson/Documents/data/2010_Biomass.tif")
 
@@ -70,15 +73,26 @@ for (p in 1:length(viirs_list)){
       frr = frr[as.vector(pi_sf),]
     }
     
-    startdate =  as.Date(firespread$ALARM_DATE[1])
-    if (length(startdate)==0 ){
-      startdate = as.Date((as.character(min(firespread$DOY2))[1]),"%Y%m%d")
-    } else if (is.na(startdate)) {
-      startdate = as.Date((as.character(min(firespread$DOY2))[1]),"%Y%m%d")
+    
+    if (  is.null(firespread$ALARM_DATE) ){
+      startdate = as.Date((as.character(min(firespread$YYYYMMDD))[1]),"%Y%m%d")-1
+    } else {
+      startdate =  as.Date(firespread$ALARM_DATE[1])
     }
+
+    if (is.na(startdate)) {
+      startdate = as.Date((as.character(min(firespread$YYYYMMDD))[1]),"%Y%m%d")-1
+    }
+     day_dif = abs(as.numeric(startdate - (as.Date((as.character(min(firespread$YYYYMMDD))[1]),"%Y%m%d")-1)))
+     if (firename == "SWEDES"){  #NORTHPASS, SWEDES  fires have wrong alarm date, check HIDDEN & LAKES (2016)
+       startdate = as.Date((as.character(min(firespread$YYYYMMDD))[1]),"%Y%m%d")-1
+     }
     start_doy=as.numeric( strftime( startdate,format = "%j"))
     
-    cause = as.numeric(firespread$CAUSE_1[1])
+    cause = as.numeric(as.character(firespread$CAUSE_1[1]))
+    if (length(cause) == 0){
+      cause = as.numeric(as.character(firespread$CAUSE[1]))
+    }
     dar = as.Date(viirs_all$dat) ####### time is in UTM, so we have the nighttime day as the day after which 
     viirs_all$date =format(dar,"%Y%m%d")
     viirs_all$DOY2 = as.integer(viirs_all$DOY - 0.5)
@@ -99,6 +113,12 @@ for (p in 1:length(viirs_list)){
     total = firespread[firespread$YYYYMMDD == max(firespread$YYYYMMDD) ,]
     total_area = gArea(total) 
 
+    eco = as.data.frame(over(frr,shape))  
+    eco=eco[1,]
+    eco1= eco$NA_L1CODE
+    eco2= eco$NA_L2CODE
+    eco3= eco$NA_L3CODE
+    
     
     i=1
     for (i in 1:length(days1)){
@@ -114,66 +134,66 @@ for (p in 1:length(viirs_list)){
       
       mont = substring(yearmonday,6,7)
       dag = substring(yearmonday,9,10)
-      wrf_inp = paste(wrf_data,"wrfpost_d02","_",year,"/wrfpost_d02","_",year,mont,".nc", sep="")
+#      wrf_inp = paste(wrf_data,"wrfpost_d02","_",year,"/wrfpost_d02","_",year,mont,".nc", sep="")
       
       
-      ncfname=wrf_inp
-      ncin <- nc_open(ncfname)
-      lon <- ncvar_get(ncin,"longitude")
-      lat <- ncvar_get(ncin,"latitude")
+#      ncfname=wrf_inp
+#      ncin <- nc_open(ncfname)
+##      lon <- ncvar_get(ncin,"longitude")
+ #     lat <- ncvar_get(ncin,"latitude")
       
-      coord=cbind(c(lon),c(lat))
+ #     coord=cbind(c(lon),c(lat))
       
-      e=extent(-130.5668, -112.9903, 29.10237, 44.44697)
-      r <- raster(e)
-      crs(r) = CRS("+init=epsg:4326")
-      r = projectRaster(r,crs="+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs",res=10000 )
+ #     e=extent(-130.5668, -112.9903, 29.10237, 44.44697)
+#      r <- raster(e)
+ #     crs(r) = CRS("+init=epsg:4326")
+ #     r = projectRaster(r,crs="+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs",res=10000 )
       #   res(r)=c(4000,4000)
       
-      tmp_array1 <- ncvar_get(ncin,"U10")
-      tmp_array2 <- ncvar_get(ncin,"V10")
+ #     tmp_array1 <- ncvar_get(ncin,"U10")
+ #     tmp_array2 <- ncvar_get(ncin,"V10")
       
-      m = as.numeric(dag)*4
+ #     m = as.numeric(dag)*4
       
-      tmp_slice1 <- c((tmp_array1[,,m]) )
-      tmp_slice2 <- c((tmp_array1[,,(m-1)]) )
-      tmp_slice3 <- c((tmp_array1[,,(m-2)]) )
-      tmp_slice4 <- c((tmp_array1[,,(m-3)]) )
+#      tmp_slice1 <- c((tmp_array1[,,m]) )
+#      tmp_slice2 <- c((tmp_array1[,,(m-1)]) )
+#      tmp_slice3 <- c((tmp_array1[,,(m-2)]) )
+#      tmp_slice4 <- c((tmp_array1[,,(m-3)]) )
       
-      tmp_slice1v <- c((tmp_array2[,,m]) )
-      tmp_slice2v <- c((tmp_array2[,,(m-1)]) )
-      tmp_slice3v <- c((tmp_array2[,,(m-2)]) )
-      tmp_slice4v <- c((tmp_array2[,,(m-3)]) )
+#      tmp_slice1v <- c((tmp_array2[,,m]) )
+#      tmp_slice2v <- c((tmp_array2[,,(m-1)]) )
+#      tmp_slice3v <- c((tmp_array2[,,(m-2)]) )
+#      tmp_slice4v <- c((tmp_array2[,,(m-3)]) )
       
-      pts1= as.data.frame(cbind(c(lon),c(lat),tmp_slice1)) 
-      pts2= as.data.frame(cbind(c(lon),c(lat),tmp_slice2)) 
-      pts3= as.data.frame(cbind(c(lon),c(lat),tmp_slice3)) 
-      pts4= as.data.frame(cbind(c(lon),c(lat),tmp_slice4)) 
+##      pts1= as.data.frame(cbind(c(lon),c(lat),tmp_slice1)) 
+#      pts2= as.data.frame(cbind(c(lon),c(lat),tmp_slice2)) 
+#      pts3= as.data.frame(cbind(c(lon),c(lat),tmp_slice3)) 
+#      pts4= as.data.frame(cbind(c(lon),c(lat),tmp_slice4)) 
       
-      pts1v= as.data.frame(cbind(c(lon),c(lat),tmp_slice1v)) 
-      pts2v= as.data.frame(cbind(c(lon),c(lat),tmp_slice2v)) 
-      pts3v= as.data.frame(cbind(c(lon),c(lat),tmp_slice3v)) 
-      pts4v= as.data.frame(cbind(c(lon),c(lat),tmp_slice4v)) 
+##      pts1v= as.data.frame(cbind(c(lon),c(lat),tmp_slice1v)) 
+#      pts2v= as.data.frame(cbind(c(lon),c(lat),tmp_slice2v)) 
+#      pts3v= as.data.frame(cbind(c(lon),c(lat),tmp_slice3v)) 
+#      pts4v= as.data.frame(cbind(c(lon),c(lat),tmp_slice4v)) 
       
-      das1  =  SpatialPointsDataFrame(coord,pts1) 
-      das2  =  SpatialPointsDataFrame(coord,pts2) 
-      das3  =  SpatialPointsDataFrame(coord,pts3) 
-      das4  =  SpatialPointsDataFrame(coord,pts4) 
+#      das1  =  SpatialPointsDataFrame(coord,pts1) 
+#      das2  =  SpatialPointsDataFrame(coord,pts2) 
+#      das3  =  SpatialPointsDataFrame(coord,pts3) 
+#      das4  =  SpatialPointsDataFrame(coord,pts4) 
       
-      das1v  =  SpatialPointsDataFrame(coord,pts1v) 
-      das2v  =  SpatialPointsDataFrame(coord,pts2v) 
-      das3v  =  SpatialPointsDataFrame(coord,pts3v) 
-      das4v  =  SpatialPointsDataFrame(coord,pts4v) 
+#      das1v  =  SpatialPointsDataFrame(coord,pts1v) 
+#      das2v  =  SpatialPointsDataFrame(coord,pts2v) 
+#      das3v  =  SpatialPointsDataFrame(coord,pts3v) 
+#      das4v  =  SpatialPointsDataFrame(coord,pts4v) 
       
-      proj4string(das1) = CRS("+init=epsg:4326")
-      proj4string(das2) = CRS("+init=epsg:4326")
-      proj4string(das3) = CRS("+init=epsg:4326")
-      proj4string(das4) = CRS("+init=epsg:4326")
+#      proj4string(das1) = CRS("+init=epsg:4326")
+#      proj4string(das2) = CRS("+init=epsg:4326")
+#      proj4string(das3) = CRS("+init=epsg:4326")
+#      proj4string(das4) = CRS("+init=epsg:4326")
       
-      proj4string(das1v) = CRS("+init=epsg:4326")
-      proj4string(das2v) = CRS("+init=epsg:4326")
-      proj4string(das3v) = CRS("+init=epsg:4326")
-      proj4string(das4v) = CRS("+init=epsg:4326")
+#      proj4string(das1v) = CRS("+init=epsg:4326")
+#      proj4string(das2v) = CRS("+init=epsg:4326")
+#      proj4string(das3v) = CRS("+init=epsg:4326")
+#      proj4string(das4v) = CRS("+init=epsg:4326")
       
       das1 = spTransform(das1,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
       das2 = spTransform(das2,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
@@ -185,23 +205,23 @@ for (p in 1:length(viirs_list)){
       das3v = spTransform(das3v,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
       das4v = spTransform(das4v,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
       
-      wrf_u1 = rasterize(das1,r,fun=mean)
-      wrf_u2 = rasterize(das2,r,fun=mean)
-      wrf_u3 = rasterize(das3,r,fun=mean)
-      wrf_u4 = rasterize(das4,r,fun=mean)
+ #     wrf_u1 = rasterize(das1,r,fun=mean)
+#      wrf_u2 = rasterize(das2,r,fun=mean)
+#      wrf_u3 = rasterize(das3,r,fun=mean)
+#      wrf_u4 = rasterize(das4,r,fun=mean)
       
-      wrf_v1 = rasterize(das1v,r,fun=mean)
-      wrf_v2 = rasterize(das2v,r,fun=mean)
-      wrf_v3 = rasterize(das3v,r,fun=mean)
-      wrf_v4 = rasterize(das4v,r,fun=mean)
+#      wrf_v1 = rasterize(das1v,r,fun=mean)
+#      wrf_v2 = rasterize(das2v,r,fun=mean)
+#      wrf_v3 = rasterize(das3v,r,fun=mean)
+#      wrf_v4 = rasterize(das4v,r,fun=mean)
       
       viirs1 = viirs_all[viirs_all$DOY2 == days1[i],]  
       if (length(viirs1) == 0){
         viirs1 = fire_new
       }
       
-      wrf_v=mean(stack(wrf_v1$tmp_slice1v ,wrf_v2$tmp_slice2v ,wrf_v3$tmp_slice3v,wrf_v4$tmp_slice4v))
-      wrf_u= mean(stack(wrf_u1$tmp_slice1 ,wrf_u2$tmp_slice2,wrf_u3$tmp_slice3,wrf_u4$tmp_slice4))
+#      wrf_v=mean(stack(wrf_v1$tmp_slice1v ,wrf_v2$tmp_slice2v ,wrf_v3$tmp_slice3v,wrf_v4$tmp_slice4v))
+#      wrf_u= mean(stack(wrf_u1$tmp_slice1 ,wrf_u2$tmp_slice2,wrf_u3$tmp_slice3,wrf_u4$tmp_slice4))
       
       gridmet_list= list.files(gridmet_dir, pattern = paste(year,".nc$",sep=""), recursive = TRUE, full.names=T)
       
@@ -295,9 +315,9 @@ for (p in 1:length(viirs_list)){
       median95_ros = quantile(viirs1$ros, 0.95)
       
       mean_frp = mean(viirs1$FRP)
-      frp_95 = quantile(viirs1$FRP, 0.95)
+      frp_95 = as.numeric(quantile(viirs1$FRP, 0.95))
       
-      dail = cbind(mean_ros,max_ros,median95_ros,bi,erc,etr,fm100,fm1000,pet,pr,rmax,rmin,th,tmmn,tmmx,vpd,vs,ws,biomass,max_land,mean_land,growth,total_area, mean_frp, frp_95,firename,fire_day,cause)
+      dail = cbind(mean_ros,max_ros,median95_ros,bi,erc,etr,fm100,fm1000,pet,pr,rmax,rmin,th,tmmn,tmmx,vpd,vs,ws,biomass,max_land,mean_land,growth,total_area, mean_frp, frp_95,firename,fire_day,cause,eco1,eco2,eco3)
       daily_res = rbind(daily_res, dail)
       #    result = rbind(result, viirs2)
       
@@ -307,9 +327,9 @@ for (p in 1:length(viirs_list)){
 
 
 writeOGR(result, "/Users/stijnhantson/Documents/projects/VIIRS_ros/", layer= "all_ros_meteo", driver="ESRI Shapefile", overwrite_layer = T)
-write.table(daily_res, "/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_meteo_V3.txt",row.names = F, sep="\t")
+write.table(daily_res, "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_dataset_V2.txt",row.names = F, sep="\t")
 
-daily_res=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_meteo_v3.txt",header=T)
+daily_res=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/final_dataset_V1.txt",header=T)
 
 res=as.data.frame(daily_res)
 
@@ -346,4 +366,61 @@ summary(res)
 
 res$per_ba = res$growth/res$total_area
 
-res = res[res$per_ba < 0.75,]
+
+res = res[res$per_ba > 0.75,]
+peak_day = as.data.frame(aggregate(res$fire_day, by = list(res$firename), min))
+peak_day=subset(peak_day,x < 55)
+hi = hist(peak_day$x,prob =F, breaks= c(0:53), xlim=c(0,55), ylab="number of fires", xlab="days", cex.lab=1.4,cex.axis=1.3)
+
+
+################### final figures   ###############################
+
+res$ros1 = res$max_ros+1
+res$ros_km = (res$median95_ros*24)/1000
+hist.a =hist(res$ros_km,breaks =c(0,0.01,0.05,0.1,0.25,0.5,1,2,5,10,20,30),plot=F)
+#plot(hist.a$count,type="h",xaxt="n",lwd=30,lend=2,xlab="Rate-of-Spread (km/day)",ylab="Number of fire days",cex.lab=1.4,cex.axis = 1.3,xlim=c(0.5,11.5),ylim = c(0,550),yaxs="i")
+#axis(1,at=(0:length(hist.a$mids)+0.5),labels=hist.a$breaks,cex.axis = 1.3)
+
+out1 = subset(res,cause == 1 )   #1=lightning; 14=unknown; 7=arson
+out2 = subset(res,cause !=1 & cause != 14 )
+
+hist.a =hist(out1$ros_km,breaks =c(0,0.01,0.05,0.1,0.25,0.5,1,2,5,10,20,30),plot=F)
+hist.b =hist(out2$ros_km,breaks =c(0,0.01,0.05,0.1,0.25,0.5,1,2,5,10,20,30),plot=F)
+fg = rbind(hist.a$counts,hist.b$counts)
+
+fr = barplot(fg, beside=TRUE,xlab="Rate-of-Spread (km/day)",ylab="Number of fire days",cex.lab=1.4,cex.axis = 1.3)
+axis(1,at=c(0.5,3.5,6.5,9.5,12.5,15.5,18.5,21.5,24.5,27.5,30.5,33.5),labels=hist.a$breaks,cex.axis = 1.3)
+legend("topright",legend = c("human","lightning"), fill=c("grey","black"),cex=1.4,bty = "n")
+
+out1 = subset(res,cause == 1 & )   #1=lightning; 14=unknown; 7=arson
+out2 = subset(res,cause !=1 & cause != 14 )
+
+hist.a =hist(out1$ros_km,breaks =c(0,0.01,0.05,0.1,0.25,0.5,1,2,5,10,20,30),plot=F)
+hist.b =hist(out2$ros_km,breaks =c(0,0.01,0.05,0.1,0.25,0.5,1,2,5,10,20,30),plot=F)
+fg = rbind(hist.a$counts,hist.b$counts)
+
+fr = barplot(fg, beside=TRUE,xlab="Rate-of-Spread (km/day)",ylab="Number of fire days",cex.lab=1.4,cex.axis = 1.3)
+axis(1,at=c(0.5,3.5,6.5,9.5,12.5,15.5,18.5,21.5,24.5,27.5,30.5,33.5),labels=hist.a$breaks,cex.axis = 1.3)
+legend("topright",legend = c("human","lightning"), fill=c("grey","black"),cex=1.4,bty = "n")
+
+
+
+
+hist.a =hist(res$ros_km,breaks =c(0,0.01,0.05,0.1,0.25,0.5,1,2,5,10,20,30),plot=F)
+plot(hist.a$count,type="h",xaxt="n",lwd=30,lend=2,xlab="Rate-of-Spread (km/day)",ylab="Number of fire days",cex.lab=1.4,cex.axis = 1.3,xlim=c(0.5,11.5),ylim = c(0,550),yaxs="i")
+axis(1,at=(0:length(hist.a$mids)+0.5),labels=hist.a$breaks,cex.axis = 1.3)
+
+, add=T
+
+hist.a =hist(res$median95_ros,breaks =c(0,1,2,4,8,16,32,64,128,256,512,1024,2048),plot=F)
+plot(hist.a$count,type="h",xaxt="n",lwd=20,lend=2,xlab="Rate-of-Spread (m/hr.)",ylab="Number of fires",cex.lab=1.4,cex.axis = 1.3,xlim=c(0,13))
+axis(1,at=(0:length(hist.a$mids)+0.5),labels=hist.a$breaks,xlab="Rate-of-Spread (m/hr.)",cex.axis = 1.3)
+
+data_s1=na.omit(data_s1)
+
+hist.a =hist(data_s1$ros95,breaks =c(0,1,2,4,8,16,32,64,128,256,512,1024,2048),plot=F)
+plot(hist.a$count,type="h",xaxt="n",lwd=20,lend=2,xlab="Rate-of-Spread (m/hr.)",ylab="Count",cex.lab=1.4,cex.axis = 1.3,xlim=c(0.9,12.3))
+axis(1,at=(0:length(hist.a$mids)+0.5),labels=hist.a$breaks,xlab="Rate-of-Spread (m/hr.)",cex.axis = 1.3)
+
+
+

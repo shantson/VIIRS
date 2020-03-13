@@ -3,6 +3,15 @@ library(utils)
 library(raster)
 library(stringr)
 li= list.files("/Users/stijnhantson/Documents/data/MTBS/DATA/",pattern = ".tar.gz$", recursive = TRUE, full.names=T)
+li= list.files("/Users/stijnhantson/Documents/data/MTBS/DATA/",pattern = ".tif$", full.names=T)
+trs1 = raster(li[57])
+trs2 = raster(li[59])
+trs3 = raster(li[61])
+trs4 = raster(li[63])
+trs5 = raster(li[65])
+trs6 = raster(li[67])
+
+dt = max(trs1,trs2,trs3,trs4,trs5,trs6)
 
 #######################  untar files ############################
 for (p in 1:length(li)){
