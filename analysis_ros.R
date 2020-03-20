@@ -1123,8 +1123,9 @@ summary(res)
 
 res$per_ba = res$growth/res$total_area
 
-res = res[res$per_ba < 0.75,]
-
+#res = res[res$per_ba < 0.75,]
+res$ros_km = (res$median95_ros*24)/1000
+res=na.omit(res)
 res_f = res[res$max_land == 1,]
 res_p = res[res$max_land != 1,]
 
@@ -1168,8 +1169,6 @@ res$logros = log10(res$median95_ros)
 res$logros[is.infinite(res$logros)] = NA
 cor(na.omit(res))
 
-
-
 res$logros = log10(res$median95_ros)
 res$logros[is.infinite(res$logros)] = NA
 
@@ -1200,14 +1199,31 @@ axis(1,at=(0:length(hist.a$mids)+0.5),labels=hist.a$breaks,xlab="Rate-of-Spread 
 
 res$log95ros = log(res$median95_ros)
 res$log95ros[res$log95ros == -Inf] = NA
+res=na.omit(res)
+res=res[res$ros_km>0,]
+res_f = res[res$max_land == 1,]
+res_p = res[res$max_land != 1,]
 
-plot(res_f$mean_frp~res_f$median95_ros,log="xy",xlim=c(0.1,800),ylim=c(0.1,180),ylab="mean FRP (MW)",xlab="95% RoS (m/h)", cex.lab=1.4,cex.axis = 1.3,col="darkgreen")
+plot(res_f$mean_frp~res_f$ros_km,log="xy",xlim=c(0.01,30),ylim=c(0.1,180),ylab="mean FRP (MW)",xlab="95% RoS (m/h)", cex.lab=1.4,cex.axis = 1.3,col="darkgreen")
 #plot(res_p$mean_frp~res_p$median95_ros,log="xy",xlim=c(0.1,800),ylim=c(0.1,180),ylab="mean FRP (MW)",xlab="95% RoS (m/h)", cex.lab=1.4 ,cex.axis = 1.3)
-points(res_p$mean_frp~res_p$median95_ros,col="orange")
+points(res_p$mean_frp~res_p$ros_km,col="orange")
 #summary(lm(log(res$median95_ros+1)~log(res$mean_frp+1),na.omit=T))
 #abline(lm(log(res$mean_frp)~res$log95ros))
 legend( x="topleft",legend=c("Forest","Grass & shrub"),col=c("darkgreen","orange"),cex=1.2,pch=1,bty = "n")
 
+########## FRP to RoS plot ############
 
+marks=c(0.01,0.1,1,10)
+tiff("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_FRP_ros_v2.tif", width = 5, height = 5, units = 'in', res = 300)
+plot(res_f$mean_frp~res_f$ros_km,log="xy",xlim=c(0.005,30),ylim=c(0.1,180),xaxt="n",ylab="mean FRP (MW)",xlab="Rate-of-Spread (km/day)", cex.lab=1.4,cex.axis = 1.3,col="darkgreen")
+points(res_p$mean_frp~res_p$ros_km,col="orange")
+axis(1,at=marks,labels=marks,cex.axis=1.4 )
+legend( x="topleft",legend=c("Forest","Grass & shrub"),col=c("darkgreen","orange"),cex=1.2,pch=1,bty = "n")
+dev.off()
+
+tr=lm(log10(res$mean_frp)~log10(res$ros_km))
+summary(tr)
+res2=res[res$ros_km>0.05,]
+abline(lm(log10(res2$mean_frp)~log10(res2$ros_km)))
 plot(res_f$vpd,res_f$median95_ros,log="y",ylim=c(0.1,1200),ylab="95% RoS (m/h)",xlab="VPD (kPa)", cex.lab=1.4,cex.axis = 1.3)
 plot(res_p$vpd,res_p$median95_ros,log="y",ylim=c(0.1,1200),ylab="95% RoS (m/h)",xlab="VPD (kPa)", cex.lab=1.4,cex.axis = 1.3)

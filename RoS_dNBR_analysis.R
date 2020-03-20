@@ -486,15 +486,83 @@ summary(lm(data_test$mean_dnbr~data_test$log_ros))
 #library(scales)
 #cols=("black")
 #plot(data_test$ros95, data_test$mean_BA_red,log="x",xlab="Rate-of-Spread (m/hr)",ylab="Tree mortality (%)",xlim=c(0.2,1000),xaxt="n",col=alpha(cols,0.65))
-
+data_s1$ros_km = (data_s1$ros95 *24)/1000
 data_test = data_s1[data_s1$max_land == 1,]
+data_test1 = data_s1[data_s1$L1CODE == 6 |data_s1$L1CODE == 7 ,]
+data_test2 = data_s1[data_s1$L1CODE == 11,]
+
 marks <- c(1,10,100,1000)
 
-tiff("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_basa_ros_v1.tif", width = 6, height = 5, units = 'in', res = 300)
+########### tree mortality RoS plots ##############
+tiff("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_basa_ros_v2.tif", width = 5, height = 5, units = 'in', res = 300)
 plot(data_test$ros95, data_test$mean_BA_red,log="x",xlab="Rate-of-Spread (m/hr)",ylab="Tree mortality (%)",xlim=c(0.25,900),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8)
 axis(1,at=marks,labels=marks,cex.axis=1.4 )
 #lines(lowess(data_test$ros95, data_test$mean_BA_red, f=0.41),col="black", lwd=3)
 dev.off()
+
+#### real figure####
+marks=c(0.01,0.1,1,10)
+tiff("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_basa_ros_all_v2.tif", width = 5, height = 5, units = 'in', res = 300)
+plot(data_s1$ros_km, data_s1$mean_BA_red,log="x",xlab="Rate-of-Spread (km/day)",ylab="Tree mortality (%)",xlim=c(0.005,30),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8)
+axis(1,at=marks,labels=marks,cex.axis=1.4 )
+#lines(lowess(data_test$ros95, data_test$mean_BA_red, f=0.41),col="black", lwd=3)
+dev.off()
+
+
+
+marks=c(0.01,0.1,1,10)
+tiff("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_basa_ros_north_v2.tif", width = 5, height = 5, units = 'in', res = 300)
+plot(data_test1$ros_km, data_test1$mean_BA_red,log="x",xlab="Rate-of-Spread (km/day)",ylab="Tree mortality (%)",xlim=c(0.005,30),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, ylim=c(0,100))
+axis(1,at=marks,labels=marks,cex.axis=1.4 )
+#lines(lowess(data_test$ros95, data_test$mean_BA_red, f=0.41),col="black", lwd=3)
+dev.off()
+
+fast = data_test1[data_test1$ros_km < 0.25,]
+slow = data_test1[data_test1$ros_km > 1,]
+mean(fast$mean_BA_red,na.rm=T)
+mean(slow$mean_BA_red,na.rm=T)
+
+marks=c(0.01,0.1,1,10)
+tiff("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_basa_ros_south_v2.tif", width = 5, height = 5, units = 'in', res = 300)
+plot(data_test2$ros_km, data_test2$mean_BA_red,log="x",xlab="Rate-of-Spread (km/day)",ylab="Tree mortality (%)",xlim=c(0.005,30),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, ylim=c(0,100))
+axis(1,at=marks,labels=marks,cex.axis=1.4 )
+#lines(lowess(data_test$ros95, data_test$mean_BA_red, f=0.41),col="black", lwd=3)
+dev.off()
+
+###### dNBR & rdNBR
+
+marks=c(0.01,0.1,1,10)
+tiff("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_dNBR_ros_all_v2.tif", width = 5, height = 5, units = 'in', res = 300)
+plot(data_s1$ros_km, data_s1$mean_dnbr,log="x",xlab="Rate-of-Spread (km/day)",ylab="dNBR",xlim=c(0.005,30),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, ylim=c(0,600))
+axis(1,at=marks,labels=marks,cex.axis=1.4 )
+#lines(lowess(data_test$ros95, data_test$mean_BA_red, f=0.41),col="black", lwd=3)
+dev.off()
+
+marks=c(0.01,0.1,1,10)
+tiff("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_rdNBR_ros_all_v2.tif", width = 5, height = 5, units = 'in', res = 300)
+plot(data_s1$ros_km, data_s1$mean_rdnbr,log="x",xlab="Rate-of-Spread (km/day)",ylab="rdNBR",xlim=c(0.005,30),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, ylim=c(0,600))
+axis(1,at=marks,labels=marks,cex.axis=1.4 )
+#lines(lowess(data_test$ros95, data_test$mean_BA_red, f=0.41),col="black", lwd=3)
+dev.off()
+
+
+marks=c(0.01,0.1,1,10)
+tiff("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_dNBR_ros_north_v2.tif", width = 5, height = 5, units = 'in', res = 300)
+plot(data_test1$ros_km, data_test1$mean_dnbr,log="x",xlab="Rate-of-Spread (km/day)",ylab="dNBR",xlim=c(0.005,30),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, ylim=c(0,600))
+axis(1,at=marks,labels=marks,cex.axis=1.4 )
+#lines(lowess(data_test$ros95, data_test$mean_BA_red, f=0.41),col="black", lwd=3)
+dev.off()
+
+marks=c(0.01,0.1,1,10)
+tiff("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_dNBR_ros_south_v2.tif", width = 5, height = 5, units = 'in', res = 300)
+plot(data_test2$ros_km, data_test2$mean_dnbr,log="x",xlab="Rate-of-Spread (km/day)",ylab="dNBR",xlim=c(0.005,30),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, ylim=c(0,600))
+axis(1,at=marks,labels=marks,cex.axis=1.4 )
+#lines(lowess(data_test$ros95, data_test$mean_BA_red, f=0.41),col="black", lwd=3)
+dev.off()
+
+
+
+
 
 
 #abline(lm(data_test$mean_BA_red~data_test$log_ros95+(data_test$log_ros95^2)))

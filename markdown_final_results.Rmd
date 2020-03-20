@@ -1,0 +1,232 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+##### extract number and size statistics from frap   ################
+```{r}
+library(raster)
+
+dr =shapefile("/Users/stijnhantson/Documents/projects/VIIRS_ros/frap_subset.shp")
+dr1 =shapefile("/Users/stijnhantson/Documents/data/FRAP/fire18_1.shp")
+dr1$YEAR_=as.numeric(as.character(dr1$YEAR_))
+dr1$Shape_Area=as.numeric(as.character(dr1$Shape_Area))
+dr1=dr1[!is.na(dr1$YEAR_), ]
+dr1=dr1[dr1$YEAR_>2011,]
+sum(dr1$Shape_Area)
+sum(dr$Shape_Area)
+```
+1) frap 
+2) only fire growth datasets
+
+- prepare final dataset to open
+```{r}
+
+daily_res=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/final_dataset_V2.txt",header=T)
+
+res=as.data.frame(daily_res)
+
+res$mean_ros =as.numeric(as.character(res$mean_ros))
+res$max_ros =as.numeric(as.character(res$max_ros))
+res$median95_ros =as.numeric(as.character(res$median95_ros))
+res$bi =as.numeric(as.character(res$bi))
+res$erc =as.numeric(as.character(res$erc))
+res$etr =as.numeric(as.character(res$etr))
+res$fm100 =as.numeric(as.character(res$fm100))
+res$fm1000 =as.numeric(as.character(res$fm1000))
+res$pet =as.numeric(as.character(res$pet))
+res$pr =as.numeric(as.character(res$pr))
+res$rmax =as.numeric(as.character(res$rmax))
+res$rmin =as.numeric(as.character(res$rmin))
+res$th =as.numeric(as.character(res$th))
+res$tmmn =as.numeric(as.character(res$tmmn))
+res$tmmx =as.numeric(as.character(res$tmmx))
+res$vpd =as.numeric(as.character(res$vpd))
+res$ws =as.numeric(as.character(res$ws))
+res$vs =as.numeric(as.character(res$vs))
+res$growth =as.numeric(as.character(res$growth))
+res$total_area =as.numeric(as.character(res$total_area))
+res$mean_frp =as.numeric(as.character(res$mean_frp))
+res$frp_95 =as.numeric(as.character(res$frp_95))
+res$max_land =as.numeric(as.character(res$max_land))
+res$mean_land =as.numeric(as.character(res$mean_land))
+res$biomass =as.numeric(as.character(res$biomass))
+
+res = res[-1,]
+#summary(res)
+res$per_ba = res$growth/res$total_area
+
+```
+
+
+############ how many days does it take to reach 75% burnt area #################
+
+```{r}
+res75 = res[res$per_ba > 0.75,]
+peak_day = as.data.frame(aggregate(res75$fire_day, by = list(res75$firename,res75$cause), min))
+peak_day=subset(peak_day,x < 55)
+hi = hist(peak_day$x,prob =F, breaks= c(0:53), xlim=c(0,55), ylab="number of fires", xlab="days", cex.lab=1.4,cex.axis=1.3)
+
+out1 = subset(res75,cause == 1 )   #1=lightning; 14=unknown; 7=arson
+out2 = subset(res75,cause !=1 & cause != 14 )
+peak_day1 = as.data.frame(aggregate(out1$fire_day, by = list(out1$firename), min))
+peak_day2 = as.data.frame(aggregate(out2$fire_day, by = list(out2$firename), min))
+
+quantile(peak_day1$x,0.50,type=3) 
+quantile(peak_day2$x,0.50,type=3) 
+
+peak_day1=subset(peak_day1,x < 56)
+peak_day2=subset(peak_day2,x < 56)
+hist.a =hist(peak_day1$x,breaks =c(0:55),plot=F)
+hist.b =hist(peak_day2$x,breaks =c(0:55),plot=F)
+fg = rbind(hist.a$counts,hist.b$counts)
+
+fr = barplot(fg,xlab="Days after ignition",ylab="Number of fires",cex.lab=1.4,cex.axis = 1.3, xlim=c(1,65), ylim=c(0,30))
+axis(1,c(0.7,5.5,11.5,17.5,23.5,29.5,35.5,41.5,47.5,53.5,59.5,65.5),labels=c(1,5,10,15,20,25,30,35,40,45,50,55),cex.axis = 1.3)
+legend("topright",legend = c("human","lightning"), fill=c("grey","black"),cex=1.4,bty = "n")
+
+
+```
+
+
+########  difference in fire size for first 5 days across california and both ecosystems 
+
+```{r}
+ 
+res$ros1 = res$max_ros+1
+res$ros_km = (res$median95_ros*24)/1000
+
+out1 = subset(res,cause == 1 )   #1=lightning; 14=unknown; 7=arson
+out2 = subset(res,cause !=1 & cause != 14 )
+
+hum1 = out2[out2$fire_day ==1,]
+hum2 = out2[out2$fire_day ==2,]
+hum3 = out2[out2$fire_day ==3,]
+hum4 = out2[out2$fire_day ==4,]
+hum5 = out2[out2$fire_day ==5,]
+lig1 = out1[out1$fire_day ==1,]
+lig2 = out1[out1$fire_day ==2,]
+lig3 = out1[out1$fire_day ==3,]
+lig4 = out1[out1$fire_day ==4,]
+lig5 = out1[out1$fire_day ==5,]
+mean(hum1$growth)
+mean(hum2$growth)
+mean(hum3$growth)
+mean(hum4$growth)
+mean(hum5$growth)
+mean(lig1$growth)
+mean(lig2$growth)
+mean(lig3$growth)
+mean(lig4$growth)
+mean(lig5$growth)
+t.test(log10(hum1$growth),log10(lig1$growth))
+t.test(log10(hum2$growth),log10(lig2$growth))
+t.test(log10(hum3$growth),log10(lig3$growth))
+t.test(log10(hum4$growth),log10(lig4$growth))
+t.test(log10(hum5$growth),log10(lig5$growth))
+
+hum1 = out2[out2$fire_day ==1 & out2$eco1==6,]
+hum2 = out2[out2$fire_day ==2 & out2$eco1==6,]
+hum3 = out2[out2$fire_day ==3 & out2$eco1==6,]
+hum4 = out2[out2$fire_day ==4 & out2$eco1==6,]
+hum5 = out2[out2$fire_day ==5 & out2$eco1==6,]
+lig1 = out1[out1$fire_day ==1 & out1$eco1==6,]
+lig2 = out1[out1$fire_day ==2 & out1$eco1==6,]
+lig3 = out1[out1$fire_day ==3 & out1$eco1==6,]
+lig4 = out1[out1$fire_day ==4 & out1$eco1==6,]
+lig5 = out1[out1$fire_day ==5 & out1$eco1==6,]
+mean(hum1$growth)
+mean(hum2$growth)
+mean(hum3$growth)
+mean(hum4$growth)
+mean(hum5$growth)
+mean(lig1$growth, na.rm=T)
+mean(lig2$growth, na.rm=T)
+mean(lig3$growth, na.rm=T)
+mean(lig4$growth, na.rm=T)
+mean(lig5$growth, na.rm=T)
+t.test(log10(hum1$growth),log10(lig1$growth))
+t.test(log10(hum2$growth),log10(lig2$growth))
+t.test(log10(hum3$growth),log10(lig3$growth))
+t.test(log10(hum4$growth),log10(lig4$growth))
+t.test(log10(hum5$growth),log10(lig5$growth))
+
+hum1 = out2[out2$fire_day ==1 & out2$eco1==11,]
+hum2 = out2[out2$fire_day ==2 & out2$eco1==11,]
+hum3 = out2[out2$fire_day ==3 & out2$eco1==11,]
+hum4 = out2[out2$fire_day ==4 & out2$eco1==11,]
+hum5 = out2[out2$fire_day ==5 & out2$eco1==11,]
+lig1 = out1[out1$fire_day ==1 & out1$eco1==11,]
+lig2 = out1[out1$fire_day ==2 & out1$eco1==11,]
+lig3 = out1[out1$fire_day ==3 & out1$eco1==11,]
+lig4 = out1[out1$fire_day ==4 & out1$eco1==11,]
+lig5 = out1[out1$fire_day ==5 & out1$eco1==11,]
+mean(hum1$growth)
+mean(hum2$growth)
+mean(hum3$growth)
+mean(hum4$growth)
+mean(hum5$growth)
+mean(lig1$growth, na.rm=T)
+mean(lig2$growth, na.rm=T)
+mean(lig3$growth, na.rm=T)
+mean(lig4$growth, na.rm=T)
+mean(lig5$growth, na.rm=T)
+t.test(log10(hum1$growth),log10(lig1$growth))
+t.test(log10(hum2$growth),log10(lig2$growth))
+t.test(log10(hum3$growth),log10(lig3$growth))
+t.test(log10(hum4$growth),log10(lig4$growth))
+t.test(log10(hum5$growth),log10(lig5$growth))
+
+
+```
+
+```{r}
+
+out1 = subset(res,cause == 1 )   #1=lightning; 14=unknown; 7=arson
+out2 = subset(res,cause !=1 & cause != 14 )
+
+mean(out1$ros_km,na.rm=T)
+mean(out2$ros_km,na.rm=T)
+
+hist.a =hist(out1$ros_km,breaks =c(0,0.01,0.05,0.1,0.25,0.5,1,2,5,10,20,30),plot=F)
+hist.b =hist(out2$ros_km,breaks =c(0,0.01,0.05,0.1,0.25,0.5,1,2,5,10,20,30),plot=F)
+fg = rbind(hist.a$counts,hist.b$counts)
+
+fr = barplot(fg, beside=TRUE,xlab="Rate-of-Spread (km/day)",ylab="Number of fire days",cex.lab=1.4,cex.axis = 1.3)
+axis(1,at=c(0.5,3.5,6.5,9.5,12.5,15.5,18.5,21.5,24.5,27.5,30.5,33.5),labels=hist.a$breaks,cex.axis = 1.3)
+legend("topright",legend = c("human","lightning"), fill=c("grey","black"),cex=1.4,bty = "n")
+
+out1 = subset(res,cause == 1 & (eco1 == 6 | eco1 == 7))   #1=lightning; 14=unknown; 7=arson
+out2 = subset(res,cause !=1 & cause != 14 & (eco1 == 6 | eco1 == 7))
+
+hist.a =hist(out1$ros_km,breaks =c(0,0.01,0.05,0.1,0.25,0.5,1,2,5,10,20,30),plot=F)
+hist.b =hist(out2$ros_km,breaks =c(0,0.01,0.05,0.1,0.25,0.5,1,2,5,10,20,30),plot=F)
+fg = rbind(hist.a$counts,hist.b$counts)
+
+fr = barplot(fg, beside=TRUE,xlab="Rate-of-Spread (km/day)",ylab="Number of fire days",cex.lab=1.4,cex.axis = 1.3)
+axis(1,at=c(0.5,3.5,6.5,9.5,12.5,15.5,18.5,21.5,24.5,27.5,30.5,33.5),labels=hist.a$breaks,cex.axis = 1.3)
+legend("topright",legend = c("human","lightning"), fill=c("grey","black"),cex=1.4,bty = "n")
+
+out1 = subset(res,cause == 1 & eco1 == 11)   #1=lightning; 14=unknown; 7=arson
+out2 = subset(res,cause !=1 & cause != 14 & eco1 == 11)
+
+hist.a =hist(out1$ros_km,breaks =c(0,0.01,0.05,0.1,0.25,0.5,1,2,5,10,20,30),plot=F)
+hist.b =hist(out2$ros_km,breaks =c(0,0.01,0.05,0.1,0.25,0.5,1,2,5,10,20,30),plot=F)
+fg = rbind(hist.a$counts,hist.b$counts)
+
+fr = barplot(fg, beside=TRUE,xlab="Rate-of-Spread (km/day)",ylab="Number of fire days",cex.lab=1.4,cex.axis = 1.3)
+axis(1,at=c(0.5,3.5,6.5,9.5,12.5,15.5,18.5,21.5,24.5,27.5,30.5,33.5),labels=hist.a$breaks,cex.axis = 1.3)
+legend("topright",legend = c("human","lightning"), fill=c("grey","black"),cex=1.4,bty = "n")
+
+```
+
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+

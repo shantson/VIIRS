@@ -24,6 +24,7 @@ viirs_list = list.files(viirs_dir, pattern = "daily_ros.shp$", recursive = TRUE,
 viirs_dbf = list.files(viirs_dir, pattern = "daily_ros.dbf$", recursive = TRUE, full.names=T)
 spread_list =list.files(viirs_dir, pattern = "_daily.shp$", recursive = TRUE, full.names=T)
 
+
 #land = raster("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/gaplf2011lc_v30_ca.tif")
 #tab = read.table("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/GAP_LANDFIRE_National_Terrestrial_Ecosystems_2011_Attributes.txt",sep="\t",header=T)
 #tab=tab[,c("Value","CL")]
@@ -329,7 +330,21 @@ for (p in 1:length(viirs_list)){
 writeOGR(result, "/Users/stijnhantson/Documents/projects/VIIRS_ros/", layer= "all_ros_meteo", driver="ESRI Shapefile", overwrite_layer = T)
 write.table(daily_res, "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_dataset_V2.txt",row.names = F, sep="\t")
 
-daily_res=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/final_dataset_V1.txt",header=T)
+##### extract number and size statistics from frap   ################
+writeOGR(frap, "/Users/stijnhantson/Documents/projects/VIIRS_ros/", layer= "frap_subset", driver="ESRI Shapefile", overwrite_layer = T)
+dr =shapefile("/Users/stijnhantson/Documents/projects/VIIRS_ros/frap_subset.shp")
+dr1 =shapefile("/Users/stijnhantson/Documents/data/FRAP/fire18_1.shp")
+dr1$YEAR_=as.numeric(as.character(dr1$YEAR_))
+dr1$Shape_Area=as.numeric(as.character(dr1$Shape_Area))
+dr1=dr1[!is.na(dr1$YEAR_), ]
+dr1=dr1[dr1$YEAR_>2011,]
+sum(dr1$Shape_Area)
+sum(dr$Shape_Area)
+
+
+
+
+daily_res=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/final_dataset_V2.txt",header=T)
 
 res=as.data.frame(daily_res)
 
@@ -366,23 +381,123 @@ summary(res)
 
 res$per_ba = res$growth/res$total_area
 
-
-res = res[res$per_ba > 0.75,]
-peak_day = as.data.frame(aggregate(res$fire_day, by = list(res$firename), min))
+############ how many days does it take to reach 75% burnt area #################
+res75 = res[res$per_ba > 0.75,]
+peak_day = as.data.frame(aggregate(res75$fire_day, by = list(res75$firename,res$cause), min))
 peak_day=subset(peak_day,x < 55)
 hi = hist(peak_day$x,prob =F, breaks= c(0:53), xlim=c(0,55), ylab="number of fires", xlab="days", cex.lab=1.4,cex.axis=1.3)
+
+out1 = subset(res75,cause == 1 )   #1=lightning; 14=unknown; 7=arson
+out2 = subset(res75,cause !=1 & cause != 14 )
+peak_day1 = as.data.frame(aggregate(out1$fire_day, by = list(out1$firename), min))
+peak_day2 = as.data.frame(aggregate(out2$fire_day, by = list(out2$firename), min))
+
+quantile(peak_day1$x,0.50,type=3) 
+quantile(peak_day2$x,0.50,type=3) 
+
+peak_day1=subset(peak_day1,x < 56)
+peak_day2=subset(peak_day2,x < 56)
+hist.a =hist(peak_day1$x,breaks =c(0:55),plot=F)
+hist.b =hist(peak_day2$x,breaks =c(0:55),plot=F)
+fg = rbind(hist.a$counts,hist.b$counts)
+
+fr = barplot(fg,xlab="Days after ignition",ylab="Number of fires",cex.lab=1.4,cex.axis = 1.3, xlim=c(1,65), ylim=c(0,30))
+axis(1,c(0.7,5.5,11.5,17.5,23.5,29.5,35.5,41.5,47.5,53.5,59.5,65.5),labels=c(1,5,10,15,20,25,30,35,40,45,50,55),cex.axis = 1.3)
+legend("topright",legend = c("human","lightning"), fill=c("grey","black"),cex=1.4,bty = "n")
+
 
 
 ################### final figures   ###############################
 
 res$ros1 = res$max_ros+1
 res$ros_km = (res$median95_ros*24)/1000
-hist.a =hist(res$ros_km,breaks =c(0,0.01,0.05,0.1,0.25,0.5,1,2,5,10,20,30),plot=F)
-#plot(hist.a$count,type="h",xaxt="n",lwd=30,lend=2,xlab="Rate-of-Spread (km/day)",ylab="Number of fire days",cex.lab=1.4,cex.axis = 1.3,xlim=c(0.5,11.5),ylim = c(0,550),yaxs="i")
-#axis(1,at=(0:length(hist.a$mids)+0.5),labels=hist.a$breaks,cex.axis = 1.3)
 
 out1 = subset(res,cause == 1 )   #1=lightning; 14=unknown; 7=arson
 out2 = subset(res,cause !=1 & cause != 14 )
+
+hum1 = out2[out2$fire_day ==1,]
+hum2 = out2[out2$fire_day ==2,]
+hum3 = out2[out2$fire_day ==3,]
+hum4 = out2[out2$fire_day ==4,]
+hum5 = out2[out2$fire_day ==5,]
+lig1 = out1[out1$fire_day ==1,]
+lig2 = out1[out1$fire_day ==2,]
+lig3 = out1[out1$fire_day ==3,]
+lig4 = out1[out1$fire_day ==4,]
+lig5 = out1[out1$fire_day ==5,]
+mean(hum1$growth)
+mean(hum2$growth)
+mean(hum3$growth)
+mean(hum4$growth)
+mean(hum5$growth)
+mean(lig1$growth)
+mean(lig2$growth)
+mean(lig3$growth)
+mean(lig4$growth)
+mean(lig5$growth)
+t.test(log10(hum1$growth),log10(lig1$growth))
+t.test(log10(hum2$growth),log10(lig2$growth))
+t.test(log10(hum3$growth),log10(lig3$growth))
+t.test(log10(hum4$growth),log10(lig4$growth))
+t.test(log10(hum5$growth),log10(lig5$growth))
+
+hum1 = out2[out2$fire_day ==1 & out2$eco1==6,]
+hum2 = out2[out2$fire_day ==2 & out2$eco1==6,]
+hum3 = out2[out2$fire_day ==3 & out2$eco1==6,]
+hum4 = out2[out2$fire_day ==4 & out2$eco1==6,]
+hum5 = out2[out2$fire_day ==5 & out2$eco1==6,]
+lig1 = out1[out1$fire_day ==1 & out1$eco1==6,]
+lig2 = out1[out1$fire_day ==2 & out1$eco1==6,]
+lig3 = out1[out1$fire_day ==3 & out1$eco1==6,]
+lig4 = out1[out1$fire_day ==4 & out1$eco1==6,]
+lig5 = out1[out1$fire_day ==5 & out1$eco1==6,]
+mean(hum1$growth)
+mean(hum2$growth)
+mean(hum3$growth)
+mean(hum4$growth)
+mean(hum5$growth)
+mean(lig1$growth, na.rm=T)
+mean(lig2$growth, na.rm=T)
+mean(lig3$growth, na.rm=T)
+mean(lig4$growth, na.rm=T)
+mean(lig5$growth, na.rm=T)
+t.test(log10(hum1$growth),log10(lig1$growth))
+t.test(log10(hum2$growth),log10(lig2$growth))
+t.test(log10(hum3$growth),log10(lig3$growth))
+t.test(log10(hum4$growth),log10(lig4$growth))
+t.test(log10(hum5$growth),log10(lig5$growth))
+
+hum1 = out2[out2$fire_day ==1 & out2$eco1==11,]
+hum2 = out2[out2$fire_day ==2 & out2$eco1==11,]
+hum3 = out2[out2$fire_day ==3 & out2$eco1==11,]
+hum4 = out2[out2$fire_day ==4 & out2$eco1==11,]
+hum5 = out2[out2$fire_day ==5 & out2$eco1==11,]
+lig1 = out1[out1$fire_day ==1 & out1$eco1==11,]
+lig2 = out1[out1$fire_day ==2 & out1$eco1==11,]
+lig3 = out1[out1$fire_day ==3 & out1$eco1==11,]
+lig4 = out1[out1$fire_day ==4 & out1$eco1==11,]
+lig5 = out1[out1$fire_day ==5 & out1$eco1==11,]
+mean(hum1$growth)
+mean(hum2$growth)
+mean(hum3$growth)
+mean(hum4$growth)
+mean(hum5$growth)
+mean(lig1$growth, na.rm=T)
+mean(lig2$growth, na.rm=T)
+mean(lig3$growth, na.rm=T)
+mean(lig4$growth, na.rm=T)
+mean(lig5$growth, na.rm=T)
+t.test(log10(hum1$growth),log10(lig1$growth))
+t.test(log10(hum2$growth),log10(lig2$growth))
+t.test(log10(hum3$growth),log10(lig3$growth))
+t.test(log10(hum4$growth),log10(lig4$growth))
+t.test(log10(hum5$growth),log10(lig5$growth))
+
+
+
+
+mean(out1$ros_km,na.rm=T)
+mean(out2$ros_km,na.rm=T)
 
 hist.a =hist(out1$ros_km,breaks =c(0,0.01,0.05,0.1,0.25,0.5,1,2,5,10,20,30),plot=F)
 hist.b =hist(out2$ros_km,breaks =c(0,0.01,0.05,0.1,0.25,0.5,1,2,5,10,20,30),plot=F)
@@ -410,7 +525,6 @@ hist.a =hist(res$ros_km,breaks =c(0,0.01,0.05,0.1,0.25,0.5,1,2,5,10,20,30),plot=
 plot(hist.a$count,type="h",xaxt="n",lwd=30,lend=2,xlab="Rate-of-Spread (km/day)",ylab="Number of fire days",cex.lab=1.4,cex.axis = 1.3,xlim=c(0.5,11.5),ylim = c(0,550),yaxs="i")
 axis(1,at=(0:length(hist.a$mids)+0.5),labels=hist.a$breaks,cex.axis = 1.3)
 
-, add=T
 
 hist.a =hist(res$median95_ros,breaks =c(0,1,2,4,8,16,32,64,128,256,512,1024,2048),plot=F)
 plot(hist.a$count,type="h",xaxt="n",lwd=20,lend=2,xlab="Rate-of-Spread (m/hr.)",ylab="Number of fires",cex.lab=1.4,cex.axis = 1.3,xlim=c(0,13))
@@ -421,6 +535,7 @@ data_s1=na.omit(data_s1)
 hist.a =hist(data_s1$ros95,breaks =c(0,1,2,4,8,16,32,64,128,256,512,1024,2048),plot=F)
 plot(hist.a$count,type="h",xaxt="n",lwd=20,lend=2,xlab="Rate-of-Spread (m/hr.)",ylab="Count",cex.lab=1.4,cex.axis = 1.3,xlim=c(0.9,12.3))
 axis(1,at=(0:length(hist.a$mids)+0.5),labels=hist.a$breaks,xlab="Rate-of-Spread (m/hr.)",cex.axis = 1.3)
+
 
 
 
