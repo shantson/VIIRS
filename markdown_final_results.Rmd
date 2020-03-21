@@ -226,7 +226,115 @@ legend("topright",legend = c("human","lightning"), fill=c("grey","black"),cex=1.
 ```
 
 
+############## analysis of the first day #################
+
+load data
+```{r}
+
+daily_res=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/all_ignitions_V3.txt",header=T)
+
+res=as.data.frame(daily_res)
+
+res$bi =as.numeric(as.character(res$bi))
+res$erc =as.numeric(as.character(res$erc))
+res$etr =as.numeric(as.character(res$etr))
+res$fm100 =as.numeric(as.character(res$fm100))
+res$fm1000 =as.numeric(as.character(res$fm1000))
+res$pet =as.numeric(as.character(res$pet))
+res$pr =as.numeric(as.character(res$pr))
+res$rmax =as.numeric(as.character(res$rmax))
+res$rmin =as.numeric(as.character(res$rmin))
+res$th =as.numeric(as.character(res$th))
+res$tmmn =as.numeric(as.character(res$tmmn))
+res$tmmx =as.numeric(as.character(res$tmmx))
+res$vpd =as.numeric(as.character(res$vpd))
+res$ws =as.numeric(as.character(res$ws))
+res$vs =as.numeric(as.character(res$vs))
+res$total_area =as.numeric(as.character(res$total_area))
+res$max_land =as.numeric(as.character(res$max_land))
+res$mean_land =as.numeric(as.character(res$mean_land))
+
+res$biomass =as.numeric(as.character(res$biomass))
+
+res = res[-1,]
+res$human[res$cause ==1] =1
+res$human[res$cause !=1 & res$cause !=14] =0
+
+```
+
+analysis
+
+```{r}
+
+out1 = res[res$cause !=1 & res$cause != 14,] 
+out2 = res[res$cause ==1,] 
+
+out1 = subset(res,(eco1 == 6 |eco1 == 7) & res$cause !=1 & res$cause != 14)   #1=lightning; 14=unknown; 7=arson
+out2 = subset(res,(eco1 == 6 |eco1 == 7) & res$cause ==1)   #1=lightning; 14=unknown; 7=arson
+
+out1 = subset(res,eco1 == 11& res$cause !=1 & res$cause != 14)
+out2 = subset(res,eco1 == 11 & res$cause ==1)
+
+out1 = subset(res,(eco1 == 6 |eco1 == 7) & res$cause !=1 & res$cause != 14 & res$mont > 5 & res$mont < 10 )   #1=lightning; 14=unknown; 7=arson
+out2 = subset(res,(eco1 == 6 |eco1 == 7) & res$cause ==1& res$mont > 5 & res$mont < 10)   #1=lightning; 14=unknown; 7=arson
+
+t.test(out1$bi,out2$bi)
+t.test(out1$erc,out2$erc)
+t.test(out1$etr,out2$etr)
+t.test(out1$fm100,out2$fm100)
+t.test(out1$fm1000,out2$fm1000)
+t.test(out1$pet,out2$pet)
+t.test(out1$pr,out2$pr)
+t.test(out1$rmax,out2$rmax)
+t.test(out1$rmin,out2$rmin)
+t.test(out1$th,out2$th)
+t.test(out1$tmmn,out2$tmmn)
+t.test(out1$tmmx,out2$tmmx)
+t.test(out1$vpd,out2$vpd)
+t.test(out1$vs,out2$vs)
+t.test(out1$ws,out2$ws)
+t.test(out1$biomass,out2$biomass)
+t.test(out1$mean_land,out2$mean_land)
+t.test(log10(out1$total_area),log10(out2$total_area))
+
+
+
+```
+
+```{r}
+
+ta = table(res$human,res$mont)
+ps = barplot(ta, beside=TRUE, ylab="number of fires",xpd=T,xlab= "month", xaxt='n',ylim=c(0,300), axis.lty=1,cex.lab = 1.4,cex.axis = 1.2 )
+axis(1,at=c(2,5,8,11,14,17,20,23,26,29,32,35), labels =c(1:12),xlim=c(0,36),xpd=F ,cex.lab = 1.4,cex.axis = 1.3)
+legend("topright",c("human","lightning"),fill = c("grey", "black"), bty="n",cex=1.4)
+text(1,285,"a)",cex=1.8)
+out1 = subset(res,eco1 == 6 |eco1 == 7)   #1=lightning; 14=unknown; 7=arson
+out2 = subset(res,eco1 == 11)
+
+ta = table(out1$human,out1$mont)
+ps = barplot(ta, beside=TRUE, ylab="number of fires",xpd=T, xaxt='n',xlab= "month", ylim=c(0,200), axis.lty=1,cex.lab = 1.4,cex.axis = 1.2 )
+axis(1,at=c(2,5,8,11,14,17,20,23,26,29,32,35), labels =c(1:12),xlim=c(0,36),xpd=F,cex.lab = 1.4,cex.axis = 1.3 )
+legend("topright",c("human","lightning"),fill = c("grey", "black"), bty="n",cex=1.4)
+text(1,190,"b)",cex=1.8)
+
+ta = table(out2$human,out2$mont)
+ps = barplot(ta, beside=TRUE, ylab="number of fires",xpd=T,xaxt='n',xlab= "month", ylim=c(0,200), axis.lty=1,cex.lab = 1.4,cex.axis = 1.2 )
+axis(1,at=c(2,5,8,11,14,17,20,23,26,29,32,35), labels =c(1:12),xlim=c(0,36),xpd=F,cex.lab = 1.4,cex.axis = 1.3 )
+legend("topright",c("human","lightning"),fill = c("grey", "black"), bty="n",cex=1.4)
+text(1,190,"c)",cex=1.8)
+```
+
+
+
+
+
 When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
 
 The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+
+
+
+
+
 
