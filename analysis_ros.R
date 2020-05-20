@@ -1086,7 +1086,7 @@ for (p in 1:length(viirs_list)){
 writeOGR(result, "/Users/stijnhantson/Documents/projects/VIIRS_ros/", layer= "all_ros_meteo", driver="ESRI Shapefile", overwrite_layer = T)
 write.table(daily_res, "/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_meteo_V3.txt",row.names = F, sep="\t")
 
-daily_res=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_meteo_v3.txt",header=T)
+daily_res=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_meteo_v5.txt",header=T)
 
 res=as.data.frame(daily_res)
 

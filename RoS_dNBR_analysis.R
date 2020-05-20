@@ -279,21 +279,23 @@ writeRaster(y1,outdir, overwrite = T)
 
 
 inpath = "/Users/stijnhantson/Documents/data/MTBS/DATA"
-inpath_viirs = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results6/"
+inpath_viirs = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results7/"
 nr_l = nchar(inpath_viirs)
 fun95 = function(x){quantile(x, 0.95)}
 data_s = c(NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA)
 P4S.latlon <- CRS("+proj=longlat +datum=WGS84")
 
-land = raster("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/gaplf2011lc_v30_ca.tif")
-tab = read.table("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/GAP_LANDFIRE_National_Terrestrial_Ecosystems_2011_Attributes.txt",sep="\t",header=T)
-tab=tab[,c("Value","CL")]
-tab=as.matrix(tab)
-landcover=reclassify(land,tab)
-landcover[landcover == 3 | landcover == 4  |  landcover == 6 |  landcover == 8 | landcover == 9 | landcover == 10] = 2
+#land = raster("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/gaplf2011lc_v30_ca.tif")
+#tab = read.table("/Users/stijnhantson/Documents/data/CAL_VEG/gaplf2011lc_v30_CA/GAP_LANDFIRE_National_Terrestrial_Ecosystems_2011_Attributes.txt",sep="\t",header=T)
+#tab=tab[,c("Value","CL")]
+#tab=as.matrix(tab)
+#landcover=reclassify(land,tab)
+#landcover[landcover == 3 | landcover == 4  |  landcover == 6 |  landcover == 8 | landcover == 9 | landcover == 10] = 2
+landcover=raster("/Users/stijnhantson/Documents/data/cal_tree_grass.tif")
 
 bio = raster("/Users/stijnhantson/Documents/data/2010_Biomass.tif")
 dem = raster("/Users/stijnhantson/Documents/data/output_srtm.tif")
+year=2012
 
 for (year in 2012:2017){
  dnbr =raster(paste(inpath,"/",year,"_dnbr.tif",sep=""))
@@ -314,7 +316,7 @@ for (year in 2012:2017){
  viirs_list =  list.files(inpath_viirs, pattern = "daily_ros.shp$", recursive = TRUE, full.names=T)
  print(year)
  for (nr_fire in 1:length(lis)){
-
+     cause1=NA
     test_year = substr(lis[nr_fire], nr_l+2, nr_l+5)
  fire = substr(lis[nr_fire], nr_l+7, (nchar(lis[nr_fire])-10))
  
@@ -322,6 +324,7 @@ for (year in 2012:2017){
   if (test_year == year){
    viirs= shapefile(lis[nr_fire])
    ro = shapefile(viirs_list[nr_fire])
+   cause1= viirs$CAUSE[1]
    for (nr_days in 1:length(viirs)){
      if (nr_days ==1){
      viirs_d=viirs[nr_days,]
@@ -336,8 +339,6 @@ for (year in 2012:2017){
      mean_ros = mean(ro1$ros,na.rm=T)
      ros95 = quantile(ro1$ros,0.95,na.rm=T)
      
-     
-     
     if (length(viirs_d) == 0){
       mean_dnbr = NA
       dnbr95 = NA
@@ -351,9 +352,11 @@ for (year in 2012:2017){
       mean_BA_red = NA
       elevation=NA
       biomass=NA
+      superficie = NA
     }else{
       land_samp = extract(landcover,viirs_d,na.rm=T)
       max_land = names(which.max(table(land_samp)))
+      superficie = area(viirs_d)
       if (is.null(max_land)){
         max_land = NA
       }
@@ -366,7 +369,7 @@ for (year in 2012:2017){
       dem1 = extract(dem,viirs_d,na.rm=T)
       elevation = mean(na.omit(as.numeric(unlist((dem1)))))
       
-     if (area(viirs_d) > 10000){
+
       te = spTransform(viirs_d,P4S.latlon)
     centroids <- getSpPPolygonsLabptSlots(te)   #calculate centroids
     lon = centroids[1,1]
@@ -391,18 +394,9 @@ for (year in 2012:2017){
   #  clip$area = area(clip)
   #  BA_red = sum(clip$da)/sum(clip$area)
     
-     }else{
-       mean_dnbr = NA
-       dnbr95 = NA
-       lon = NA
-       lat=NA
-       mean_rdnbr=NA
-       rdnbr95=NA
-       mean_BA_red=NA
-       BA_red95=NA
-     }
+    
     }
-  dat = c(lon,lat,fire,nr_days,max_land,mean_land,elevation, biomass,mean_ros,ros95, mean_dnbr,dnbr95,mean_rdnbr,rdnbr95,mean_BA_red,BA_red95)
+  dat = c(lon,lat,fire,nr_days,max_land,mean_land,elevation, biomass,mean_ros,ros95, mean_dnbr,dnbr95,mean_rdnbr,rdnbr95,mean_BA_red,BA_red95,cause1,superficie)
   data_s = rbind(data_s,dat)
   mean_ros=0
   ros95=0
@@ -421,6 +415,7 @@ for (year in 2012:2017){
   mean_BA_red=0
   elevation=0
   biomass=0
+  superficie = 0
    }
   }
  gc()
@@ -428,15 +423,15 @@ for (year in 2012:2017){
  }
 }
 
-write.table(data_s, "/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_dNBR_V3.txt",sep="\t")
+write.table(data_s, "/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_dNBR_V6.txt",sep="\t")
 removeTmpFiles(1)
 
-data_s=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_dNBR_V3.txt",row.names=NULL)
+data_s=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_dNBR_V6.txt",row.names=NULL)
 rownames(data_s) <- c()
 data_s1 = as.data.frame(data_s[,2:17])
 
 
-names(data_s1) = c("lon","lat","fire","nr_day","max_land","mean_land","elevation","biomass","mean_ros","ros95","mean_dnbr","dnbr95","mean_rdnbr","rdnbr95","mean_BA_red","BA_red95")
+names(data_s1) = c("lon","lat","fire","nr_day","max_land","mean_land","elevation","biomass","mean_ros","ros95","mean_dnbr","dnbr95","mean_rdnbr","rdnbr95","mean_BA_red","BA_red95","cause","area")
 
 
 data_s1$mean_ros =as.numeric(as.character(data_s1$mean_ros))
@@ -454,8 +449,9 @@ data_s1$mean_BA_red =as.numeric(as.character(data_s1$mean_BA_red))
 data_s1$BA_red95 =as.numeric(as.character(data_s1$BA_red95))
 data_s1$biomass =as.numeric(as.character(data_s1$biomass))
 data_s1$elevation =as.numeric(as.character(data_s1$elevation))
+data_s1$cause =as.numeric(as.character(data_s1$cause))
 
-data_s1=na.omit(data_s1)
+#data_s1=na.omit(data_s1)
 shape = shapefile("/Users/stijnhantson/Documents/data/veg_california/ca_eco_l3/ca_eco_l3.shp")
 pts <- SpatialPoints(data_s1[,c("lon","lat")],P4S.latlon)
 shape = spTransform(shape,P4S.latlon)

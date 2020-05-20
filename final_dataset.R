@@ -10,7 +10,7 @@ library(raster)
 library(rgdal)
 library(foreign)
 library(ncdf4)
-viirs_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results6/"
+viirs_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results7/"
 gridmet_dir = "/Users/stijnhantson/Documents/data/gridmet/"
 wrf_data = "/Volumes/MyBookDuo/wrf_UCLA/"
 
@@ -35,7 +35,7 @@ spread_list =list.files(viirs_dir, pattern = "_daily.shp$", recursive = TRUE, fu
 #writeRaster(landcover,"/Users/stijnhantson/Documents/data/cal_tree_grass.tif",overwrite=T)
 landcover=raster("/Users/stijnhantson/Documents/data/cal_tree_grass.tif")
 shape = shapefile("/Users/stijnhantson/Documents/data/veg_california/ca_eco_l3/ca_eco_l3.shp")
-shape = spTransform(shape,crs(frr))
+shape = spTransform(shape,crs(frap))
 
 
 bio = raster("/Users/stijnhantson/Documents/data/2010_Biomass.tif")
@@ -99,7 +99,8 @@ for (p in 1:length(viirs_list)){
     viirs_all$DOY2 = as.integer(viirs_all$DOY - 0.5)
     #summary(viirs_all)
     year = substring(dar[1],1,4)
-    month = substring(dar,6,7)
+    month = substring(dar[1],6,7)
+    doy_out =     viirs_all$DOY2[1]
     #plot(viirs_all$ros~viirs_all$FRP)
     #plot(log(viirs_all$ros),log(viirs_all$FRP))
     
@@ -196,15 +197,15 @@ for (p in 1:length(viirs_list)){
 #      proj4string(das3v) = CRS("+init=epsg:4326")
 #      proj4string(das4v) = CRS("+init=epsg:4326")
       
-      das1 = spTransform(das1,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
-      das2 = spTransform(das2,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
-      das3 = spTransform(das3,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
-      das4 = spTransform(das4,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
+#      das1 = spTransform(das1,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
+#      das2 = spTransform(das2,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
+#      das3 = spTransform(das3,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
+#      das4 = spTransform(das4,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
       
-      das1v = spTransform(das1v,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
-      das2v = spTransform(das2v,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
-      das3v = spTransform(das3v,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
-      das4v = spTransform(das4v,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
+#      das1v = spTransform(das1v,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
+#      das2v = spTransform(das2v,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
+#      das3v = spTransform(das3v,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
+#      das4v = spTransform(das4v,  CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=37.7662 +lon_0=-119.6612 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ) 
       
  #     wrf_u1 = rasterize(das1,r,fun=mean)
 #      wrf_u2 = rasterize(das2,r,fun=mean)
@@ -260,9 +261,9 @@ for (p in 1:length(viirs_list)){
       crs(l_vpd)= CRS("+init=epsg:4326")
       crs(l_vs)= CRS("+init=epsg:4326")
       
-      l_ws=((wrf_u*wrf_u)+(wrf_v*wrf_v))^0.5
+#      l_ws=((wrf_u*wrf_u)+(wrf_v*wrf_v))^0.5
       
-      ws =  as.data.frame(extract(l_ws, viirs1))
+#      ws =  as.data.frame(extract(l_ws, viirs1))
       bi = as.data.frame(extract(l_bi, viirs1))
       erc = as.data.frame(extract(l_erc, viirs1))
       etr = as.data.frame(extract(l_etr, viirs1))
@@ -283,7 +284,7 @@ for (p in 1:length(viirs_list)){
       #     
       #     viirs2 = cbind(viirs1,te)
       
-      ws = mean(ws[,1])
+#      ws = mean(ws[,1])
       bi = mean(bi[,1])
       erc = mean(erc[,1])
       etr = mean(etr[,1])
@@ -318,7 +319,7 @@ for (p in 1:length(viirs_list)){
       mean_frp = mean(viirs1$FRP)
       frp_95 = as.numeric(quantile(viirs1$FRP, 0.95))
       
-      dail = cbind(mean_ros,max_ros,median95_ros,bi,erc,etr,fm100,fm1000,pet,pr,rmax,rmin,th,tmmn,tmmx,vpd,vs,ws,biomass,max_land,mean_land,growth,total_area, mean_frp, frp_95,firename,fire_day,cause,eco1,eco2,eco3)
+      dail = cbind(mean_ros,max_ros,median95_ros,bi,erc,etr,fm100,fm1000,pet,pr,rmax,rmin,th,tmmn,tmmx,vpd,vs,biomass,max_land,mean_land,growth,total_area, mean_frp, frp_95,firename,fire_day,year,month,doy_out,cause,eco1,eco2,eco3)
       daily_res = rbind(daily_res, dail)
       #    result = rbind(result, viirs2)
       
@@ -328,7 +329,7 @@ for (p in 1:length(viirs_list)){
 
 
 writeOGR(result, "/Users/stijnhantson/Documents/projects/VIIRS_ros/", layer= "all_ros_meteo", driver="ESRI Shapefile", overwrite_layer = T)
-write.table(daily_res, "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_dataset_V2.txt",row.names = F, sep="\t")
+write.table(daily_res, "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_dataset_V3.txt",row.names = F, sep="\t")
 
 ##### extract number and size statistics from frap   ################
 writeOGR(frap, "/Users/stijnhantson/Documents/projects/VIIRS_ros/", layer= "frap_subset", driver="ESRI Shapefile", overwrite_layer = T)
@@ -535,7 +536,6 @@ data_s1=na.omit(data_s1)
 hist.a =hist(data_s1$ros95,breaks =c(0,1,2,4,8,16,32,64,128,256,512,1024,2048),plot=F)
 plot(hist.a$count,type="h",xaxt="n",lwd=20,lend=2,xlab="Rate-of-Spread (m/hr.)",ylab="Count",cex.lab=1.4,cex.axis = 1.3,xlim=c(0.9,12.3))
 axis(1,at=(0:length(hist.a$mids)+0.5),labels=hist.a$breaks,xlab="Rate-of-Spread (m/hr.)",cex.axis = 1.3)
-
 
 
 

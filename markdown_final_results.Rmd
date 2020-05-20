@@ -8,6 +8,94 @@ This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
 
+
+
+
+```{r}
+library(raster)
+size_dat=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/fire_growth_5days_v4.txt", header=T, row.names=NULL)
+
+size_dat=as.data.frame(size_dat)
+size_dat=size_dat[-1,]
+size_dat=size_dat[,-1]
+colnames(size_dat)=c("firename","year","cause","size1","size2","size3","size4","size5","final_firesize","mean_precip1","mean_precip2","mean_precip3","mean_precip4","mean_precip5","mean_tmax1","mean_tmax2","mean_tmax3","mean_tmax4","mean_tmax5","mean_tmean1","mean_tmean2","mean_tmean3","mean_tmean4","mean_tmean5","mean_vpdmax1","mean_vpdmax2","mean_vpdmax3","mean_vpdmax4","mean_vpdmax5","mean_windspeed1","mean_windspeed2","mean_windspeed3","mean_windspeed4","mean_windspeed5","landcover","ecosystem","biomass","elevation")
+
+size_dat2 <- data.frame(lapply(size_dat, function(x) as.numeric(as.character(x))))
+size_dat2$human = 0
+size_dat2$human[size_dat2$cause !=1 & size_dat2$cause !=14 & size_dat2$cause !=17]=1
+size_dat2$human[size_dat2$cause ==1 ]=2
+
+pro1 =size_dat2[which(size_dat2$human == 2 & size_dat2$landcover == 1 ), ]
+pro2 =size_dat2[which(size_dat2$human == 1 & size_dat2$landcover == 1 ), ]
+
+t.test(pro1$size1,pro2$size1)
+t.test(pro1$size2,pro2$size2)
+t.test(pro1$size3,pro2$size3)
+t.test(pro1$size4,pro2$size4)
+t.test(pro1$size5,pro2$size5)
+
+
+pro =size_dat2[which(size_dat2$human == 1 & size_dat2$landcover == 1), ]
+length(pro$year)
+boxplot(pro$size1,pro$size2,pro$size3,pro$size4,pro$size5,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,500), cex.lab=1.4,cex.axis = 1.3)
+
+pro =size_dat2[which(size_dat2$human == 2 & size_dat2$landcover == 1), ]
+length(pro$year)
+boxplot(pro$size1,pro$size2,pro$size3,pro$size4,pro$size5,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,500), cex.lab=1.4,cex.axis = 1.3)
+
+pro =size_dat2[which(size_dat2$human == 1 & size_dat2$landcover == 2), ]
+length(pro$year)
+boxplot(pro$size1,pro$size2,pro$size3,pro$size4,pro$size5,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,500), cex.lab=1.4,cex.axis = 1.3)
+
+pro =size_dat2[which(size_dat2$human == 2 & size_dat2$landcover == 2), ]
+length(pro$year)
+boxplot(pro$size1,pro$size2,pro$size3,pro$size4,pro$size5,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,500), cex.lab=1.4,cex.axis = 1.3)
+length(!is.na(pro$size5))
+
+
+
+pro =size_dat2[which(size_dat2$human == 1 & size_dat2$ecosystem == 6), ]
+length(pro$year)
+boxplot(pro$size1,pro$size2,pro$size3,pro$size4,pro$size5,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,500), cex.lab=1.4,cex.axis = 1.3)
+
+pro =size_dat2[which(size_dat2$human == 2& size_dat2$ecosystem == 6), ]
+length(pro$year)
+boxplot(pro$size1,pro$size2,pro$size3,pro$size4,pro$size5,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,500), cex.lab=1.4,cex.axis = 1.3)
+
+
+```
+
+
+
+
+
+############ plot fire size map QGIS #####################################
+
+```{r}
+library(data.table)
+DT= data.table(res)
+fire_size = DT[ , .SD[which.min(growth_km)], by = firename]
+
+fire_size = fire_size[,c()]
+spread_list =list.files(viirs_dir, pattern = "_daily.shp$", recursive = TRUE, full.names=T)
+i=1
+ l=shapefile(spread_list[i])
+for (i in 2:length(spread_list)){
+  p=shapefile(spread_list[i])
+  l <- rbind(l, p, makeUniqueIDs = TRUE) 
+}
+ l$human = 0
+l$human[l$CAUSE !=1 & l$CAUSE !=14 & l$CAUSE !=17]=1
+l$human[l$CAUSE ==1 ]=2
+
+     writeOGR(l, "/Users/stijnhantson/Documents/projects/VIIRS_ros/", layer= "all_fires", driver="ESRI Shapefile", overwrite_layer = T)
+
+```
+
+
+
+
+
 ##### extract number and size statistics from frap   ################
 ```{r}
 library(raster)
@@ -27,7 +115,7 @@ sum(dr$Shape_Area)
 - prepare final dataset to open
 ```{r}
 
-daily_res=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/final_dataset_V2.txt",header=T)
+daily_res=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/final_dataset_V3.txt",header=T)
 
 res=as.data.frame(daily_res)
 
@@ -47,7 +135,7 @@ res$th =as.numeric(as.character(res$th))
 res$tmmn =as.numeric(as.character(res$tmmn))
 res$tmmx =as.numeric(as.character(res$tmmx))
 res$vpd =as.numeric(as.character(res$vpd))
-res$ws =as.numeric(as.character(res$ws))
+#res$ws =as.numeric(as.character(res$ws))
 res$vs =as.numeric(as.character(res$vs))
 res$growth =as.numeric(as.character(res$growth))
 res$total_area =as.numeric(as.character(res$total_area))
@@ -56,13 +144,329 @@ res$frp_95 =as.numeric(as.character(res$frp_95))
 res$max_land =as.numeric(as.character(res$max_land))
 res$mean_land =as.numeric(as.character(res$mean_land))
 res$biomass =as.numeric(as.character(res$biomass))
+res$year =as.numeric(as.character(res$year))
+res$month =as.numeric(as.character(res$month))
+res$doy_out =as.numeric(as.character(res$doy_out))
 
 res = res[-1,]
-#summary(res)
 res$per_ba = res$growth/res$total_area
+res$growth_km =res$growth/1000000
+
+res$human = 0
+res$human[res$cause !=1 & res$cause !=14 & res$cause !=17]=1
+res$human[res$cause ==1 ]=2
+
+res$ros_km = (res$median95_ros*24)/1000
+res$ros_mean_km = (res$mean_ros*24)/1000
 
 ```
 
+####### plot mean vs max fire rate-of-spread ##################
+```{r}
+#summary(res)
+plot(res$ros_km,res$ros_mean_km, xlab="maximum fire-spread-rate (km/day",ylab="mean fire-spread-rate (km/day)")
+
+
+tiff("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/mean_vs_max_ros_v1.tif", width = 5, height = 5, units = 'in', res = 300)
+plot(res$ros_km,res$ros_mean_km, xlim=c(0,25),ylim=c(0,10), xlab="maximum fire rate-of-spread (km/day)",ylab="mean fire rate-of-spread (km/day)", cex.lab=1.3,cex.axis = 1.25)
+dev.off()
+
+```
+
+
+
+############ difference between human and lightnign fires #################
+
+```{r}
+me=0
+me1=0
+days = c("day1","day2","day3","day4","day5")
+pro1 = res[res$fire_day == 1 & res$human == 1,]
+pro2 = res[res$fire_day == 2 & res$human == 1,]
+pro3 = res[res$fire_day == 3 & res$human == 1,]
+pro4 = res[res$fire_day == 4 & res$human == 1,]
+pro5 = res[res$fire_day == 5 & res$human == 1,]
+me[1] =mean(pro1$growth_km,na.omit=T)
+me[2] =mean(pro2$growth_km,na.omit=T)
+me[3] =mean(pro3$growth_km,na.omit=T)
+me[4] =mean(pro4$growth_km,na.omit=T)
+me[5] =mean(pro5$growth_km,na.omit=T)
+
+pro1h = res[res$fire_day == 1 & res$human == 2,]
+pro2h = res[res$fire_day == 2 & res$human == 2,]
+pro3h = res[res$fire_day == 3 & res$human == 2,]
+pro4h = res[res$fire_day == 4 & res$human == 2,]
+pro5h = res[res$fire_day == 5 & res$human == 2,]
+me1[1] =mean(pro1h$growth_km,na.omit=T)
+me1[2] =mean(pro2h$growth_km,na.omit=T)
+me1[3] =mean(pro3h$growth_km,na.omit=T)
+me1[4] =mean(pro4h$growth_km,na.omit=T)
+me1[5] =mean(pro5h$growth_km,na.omit=T)
+
+boxplot(pro1$growth_km,pro2$growth_km,pro3$growth_km,pro4$growth_km,pro5$growth_km,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,250), cex.lab=1.4,cex.axis = 1.3)
+
+boxplot(pro1h$growth_km,pro2h$growth_km,pro3h$growth_km,pro4h$growth_km,pro5h$growth_km,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,250), cex.lab=1.4,cex.axis = 1.3)
+
+tiff("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/figure1_v1.tif", width = 10, height = 5, units = 'in', res = 300)
+par(mfrow=c(1,2))
+par(mar=c(4, 4, 1,0.1))
+par(mgp=c(2.3,1,0))
+boxplot(pro1$growth_km,pro2$growth_km,pro3$growth_km,pro4$growth_km,pro5$growth_km,names=c("1","2","3","4","5"),xlab="Day since fire start",ylab= expression('Fire size (km'^-1*')'),ylim=c(0,200), cex.lab=1.4,cex.axis = 1.3)
+boxplot(pro1h$growth_km,pro2h$growth_km,pro3h$growth_km,pro4h$growth_km,pro5h$growth_km,names=c("1","2","3","4","5"),xlab="Day since fire start",ylab= "",ylim=c(0,200), cex.lab=1.4,cex.axis = 1.3)
+dev.off()
+
+tiff("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/sup_figure1_v1.tif", width = 10, height = 5, units = 'in', res = 300)
+par(mfrow=c(1,2))
+par(mar=c(4, 4, 1,0.1))
+par(mgp=c(2.3,1,0))
+boxplot(pro1$growth_km,pro2$growth_km,pro3$growth_km,pro4$growth_km,pro5$growth_km,names=c("1","2","3","4","5"),xlab="Day since fire start",ylab= expression('Fire size (km'^-1*')'),ylim=c(0,700), cex.lab=1.4,cex.axis = 1.3)
+boxplot(pro1h$growth_km,pro2h$growth_km,pro3h$growth_km,pro4h$growth_km,pro5h$growth_km,names=c("1","2","3","4","5"),xlab="Day since fire start",ylab= "",ylim=c(0,700), cex.lab=1.4,cex.axis = 1.3)
+dev.off() 
+
+
+par(mgp=c(2.3,1,0))  
+plot(me,type="o", ylim=c(0,150),ylab=expression("fire size (km"^2*")"),xlab="", xaxt='n', lty = 1, lwd = 2,cex.lab=1.2)
+axis(side=1, at=c(1:5),labels=days)
+points(me1,type="o",lty = 2, lwd = 2)
+
+t.test(log(pro1$growth_km),log(pro1h$growth_km))
+t.test(log(pro2$growth_km),log(pro2h$growth_km))
+t.test(log(pro3$growth_km),log(pro3h$growth_km))
+t.test(log(pro4$growth_km),log(pro4h$growth_km))
+t.test(log(pro5$growth_km),log(pro5h$growth_km))
+
+
+```
+
+##################3 for western cordillera ecoregion  ##################
+```{r}
+me=0
+me1=0
+pro1 = res[res$fire_day == 1 & res$human == 1 & (res$eco1 == 6 | res$eco1 == 7),]
+pro2 = res[res$fire_day == 2 & res$human == 1 & (res$eco1 == 6 | res$eco1 == 7),]
+pro3 = res[res$fire_day == 3 & res$human == 1 & (res$eco1 == 6 | res$eco1 == 7),]
+pro4 = res[res$fire_day == 4 & res$human == 1 & (res$eco1 == 6 | res$eco1 == 7),]
+pro5 = res[res$fire_day == 5 & res$human == 1 & (res$eco1 == 6 | res$eco1 == 7),]
+
+boxplot(pro1$growth_km,pro2$growth_km,pro3$growth_km,pro4$growth_km,pro5$growth_km,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,250), cex.lab=1.4,cex.axis = 1.3)
+
+pro1h = res[res$fire_day == 1 & res$human == 2 & (res$eco1 == 6 | res$eco1 == 7),]
+pro2h = res[res$fire_day == 2 & res$human == 2 & (res$eco1 == 6 | res$eco1 == 7),]
+pro3h = res[res$fire_day == 3 & res$human == 2 & (res$eco1 == 6 | res$eco1 == 7),]
+pro4h = res[res$fire_day == 4 & res$human == 2 & (res$eco1 == 6 | res$eco1 == 7),]
+pro5h = res[res$fire_day == 5 & res$human == 2 & (res$eco1 == 6 | res$eco1 == 7),]
+
+boxplot(pro1h$growth_km,pro2h$growth_km,pro3h$growth_km,pro4h$growth_km,pro5h$growth_km,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,250), cex.lab=1.4,cex.axis = 1.3)
+
+me[1] =mean(pro1$growth_km,na.omit=T)
+me[2] =mean(pro2$growth_km,na.omit=T)
+me[3] =mean(pro3$growth_km,na.omit=T)
+me[4] =mean(pro4$growth_km,na.omit=T)
+me[5] =mean(pro5$growth_km,na.omit=T)
+
+me1[1] =mean(pro1h$growth_km,na.rm=T)
+me1[2] =mean(pro2h$growth_km,na.rm=T)
+me1[3] =mean(pro3h$growth_km,na.rm=T)
+me1[4] =mean(pro4h$growth_km,na.rm=T)
+me1[5] =mean(pro5h$growth_km,na.rm=T)
+
+
+par(mgp=c(2.3,1,0))  
+plot(me,type="o", ylim=c(0,150),ylab=expression("fire size (km"^2*")"),xlab="", xaxt='n', lty = 1, lwd = 2,cex.lab=1.2)
+axis(side=1, at=c(1:5),labels=days)
+points(me1,type="o",lty = 2, lwd = 2)
+
+t.test(log(pro1$growth_km),log(pro1h$growth_km))
+t.test(log(pro2$growth_km),log(pro2h$growth_km))
+t.test(log(pro3$growth_km),log(pro3h$growth_km))
+t.test(log(pro4$growth_km),log(pro4h$growth_km))
+t.test(log(pro5$growth_km),log(pro5h$growth_km))
+
+mean(pro1$growth_km,na.omit=T)
+mean(pro1h$growth_km,na.rm=T)
+
+```
+
+################## for mediteranean california  ##################
+
+```{r}
+pro1 = res[res$fire_day == 1 & res$human == 1 & (res$eco1 == 11),]
+pro2 = res[res$fire_day == 2 & res$human == 1 & (res$eco1 == 11),]
+pro3 = res[res$fire_day == 3 & res$human == 1 & (res$eco1 == 11),]
+pro4 = res[res$fire_day == 4 & res$human == 1 & (res$eco1 == 11),]
+pro5 = res[res$fire_day == 5 & res$human == 1 & (res$eco1 == 11),]
+
+boxplot(pro1$growth_km,pro2$growth_km,pro3$growth_km,pro4$growth_km,pro5$growth_km,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,300), cex.lab=1.4,cex.axis = 1.3)
+
+pro1h = res[res$fire_day == 1 & res$human == 2 & (res$eco1 == 11),]
+pro2h = res[res$fire_day == 2 & res$human == 2 & (res$eco1 == 11),]
+pro3h = res[res$fire_day == 3 & res$human == 2 & (res$eco1 == 11),]
+pro4h = res[res$fire_day == 4 & res$human == 2 & (res$eco1 == 11),]
+pro5h = res[res$fire_day == 5 & res$human == 2 & (res$eco1 == 11),]
+
+boxplot(pro1h$growth_km,pro2h$growth_km,pro3h$growth_km,pro4h$growth_km,pro5h$growth_km,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,300), cex.lab=1.4,cex.axis = 1.3)
+
+me[1] =mean(pro1$growth_km,na.omit=T)
+me[2] =mean(pro2$growth_km,na.omit=T)
+me[3] =mean(pro3$growth_km,na.omit=T)
+me[4] =mean(pro4$growth_km,na.omit=T)
+me[5] =mean(pro5$growth_km,na.omit=T)
+
+me1[1] =mean(pro1h$growth_km,na.rm=T)
+me1[2] =mean(pro2h$growth_km,na.rm=T)
+me1[3] =mean(pro3h$growth_km,na.rm=T)
+me1[4] =mean(pro4h$growth_km,na.rm=T)
+me1[5] =mean(pro5h$growth_km,na.rm=T)
+
+
+par(mgp=c(2.3,1,0))  
+plot(me,type="o", ylim=c(0,150),ylab=expression("fire size (km"^2*")"),xlab="", xaxt='n', lty = 1, lwd = 2,cex.lab=1.2)
+axis(side=1, at=c(1:5),labels=days)
+points(me1,type="o",lty = 2, lwd = 2)
+
+```
+################## for difference in autumn  ##################
+```{r}
+pro1 = res[res$fire_day == 1 & res$human == 1 & res$month >8,]
+pro2 = res[res$fire_day == 2 & res$human == 1 & res$month >8,]
+pro3 = res[res$fire_day == 3 & res$human == 1 & res$month >8,]
+pro4 = res[res$fire_day == 4 & res$human == 1 & res$month >8,]
+pro5 = res[res$fire_day == 5 & res$human == 1 & res$month >8,]
+
+boxplot(pro1$growth_km,pro2$growth_km,pro3$growth_km,pro4$growth_km,pro5$growth_km,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,300), cex.lab=1.4,cex.axis = 1.3)
+
+pro1h = res[res$fire_day == 1 & res$human == 2 & res$month >8,]
+pro2h = res[res$fire_day == 2 & res$human == 2 & res$month >8,]
+pro3h = res[res$fire_day == 3 & res$human == 2 & res$month >8,]
+pro4h = res[res$fire_day == 4 & res$human == 2 & res$month >8,]
+pro5h = res[res$fire_day == 5 & res$human == 2 & res$month >8,]
+
+boxplot(pro1h$growth_km,pro2h$growth_km,pro3h$growth_km,pro4h$growth_km,pro5h$growth_km,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,300), cex.lab=1.4,cex.axis = 1.3)
+
+me[1] =mean(pro1$growth_km,na.omit=T)
+me[2] =mean(pro2$growth_km,na.omit=T)
+me[3] =mean(pro3$growth_km,na.omit=T)
+me[4] =mean(pro4$growth_km,na.omit=T)
+me[5] =mean(pro5$growth_km,na.omit=T)
+
+me1[1] =mean(pro1h$growth_km,na.rm=T)
+me1[2] =mean(pro2h$growth_km,na.rm=T)
+me1[3] =mean(pro3h$growth_km,na.rm=T)
+me1[4] =mean(pro4h$growth_km,na.rm=T)
+me1[5] =mean(pro5h$growth_km,na.rm=T)
+
+
+par(mgp=c(2.3,1,0))  
+plot(me,type="o", ylim=c(0,150),ylab=expression("fire size (km"^2*")"),xlab="", xaxt='n', lty = 1, lwd = 2,cex.lab=1.2)
+axis(side=1, at=c(1:5),labels=days)
+points(me1,type="o",lty = 2, lwd = 2)
+
+```
+
+################## for difference in summer  ##################
+
+```{r}
+pro1 = res[res$fire_day == 1 & res$human == 1 & res$month <=8 ,]
+pro2 = res[res$fire_day == 2 & res$human == 1 & res$month <=8,]
+pro3 = res[res$fire_day == 3 & res$human == 1 & res$month <=8,]
+pro4 = res[res$fire_day == 4 & res$human == 1 & res$month <=8,]
+pro5 = res[res$fire_day == 5 & res$human == 1 & res$month <=8,]
+
+boxplot(pro1$growth_km,pro2$growth_km,pro3$growth_km,pro4$growth_km,pro5$growth_km,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,300), cex.lab=1.4,cex.axis = 1.3)
+
+pro1h = res[res$fire_day == 1 & res$human == 2 & res$month <=8,]
+pro2h = res[res$fire_day == 2 & res$human == 2 & res$month <=8,]
+pro3h = res[res$fire_day == 3 & res$human == 2 & res$month <=8,]
+pro4h = res[res$fire_day == 4 & res$human == 2 & res$month <=8,]
+pro5h = res[res$fire_day == 5 & res$human == 2 & res$month <=8,]
+
+boxplot(pro1h$growth_km,pro2h$growth_km,pro3h$growth_km,pro4h$growth_km,pro5h$growth_km,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,300), cex.lab=1.4,cex.axis = 1.3)
+
+me[1] =mean(pro1$growth_km,na.omit=T)
+me[2] =mean(pro2$growth_km,na.omit=T)
+me[3] =mean(pro3$growth_km,na.omit=T)
+me[4] =mean(pro4$growth_km,na.omit=T)
+me[5] =mean(pro5$growth_km,na.omit=T)
+
+me1[1] =mean(pro1h$growth_km,na.rm=T)
+me1[2] =mean(pro2h$growth_km,na.rm=T)
+me1[3] =mean(pro3h$growth_km,na.rm=T)
+me1[4] =mean(pro4h$growth_km,na.rm=T)
+me1[5] =mean(pro5h$growth_km,na.rm=T)
+
+
+par(mgp=c(2.3,1,0))  
+plot(me,type="o", ylim=c(0,150),ylab=expression("fire size (km"^2*")"),xlab="", xaxt='n', lty = 1, lwd = 2,cex.lab=1.2)
+axis(side=1, at=c(1:5),labels=days)
+points(me1,type="o",lty = 2, lwd = 2)
+
+
+```
+
+################## for difference in summer in western cordillera  ##################
+
+```{r}
+pro1 = res[res$fire_day == 1 & res$human == 1 & ( res$month <=8 & res$month >5 ) & (res$eco1 == 6 | res$eco1 == 7),]
+pro2 = res[res$fire_day == 2 & res$human == 1 & ( res$month <=8 & res$month >5 ) & (res$eco1 == 6 | res$eco1 == 7),]
+pro3 = res[res$fire_day == 3 & res$human == 1 & ( res$month <=8 & res$month >5 ) & (res$eco1 == 6 | res$eco1 == 7),]
+pro4 = res[res$fire_day == 4 & res$human == 1 & ( res$month <=8 & res$month >5 ) & (res$eco1 == 6 | res$eco1 == 7),]
+pro5 = res[res$fire_day == 5 & res$human == 1 & ( res$month <=8 & res$month >5 ) & (res$eco1 == 6 | res$eco1 == 7),]
+
+boxplot(pro1$growth_km,pro2$growth_km,pro3$growth_km,pro4$growth_km,pro5$growth_km,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,300), cex.lab=1.4,cex.axis = 1.3)
+
+pro1h = res[res$fire_day == 1 & res$human == 2 & ( res$month <=8 & res$month >5 ) & (res$eco1 == 6 | res$eco1 == 7),]
+pro2h = res[res$fire_day == 2 & res$human == 2 & ( res$month <=8 & res$month >5 ) & (res$eco1 == 6 | res$eco1 == 7),]
+pro3h = res[res$fire_day == 3 & res$human == 2 & ( res$month <=8 & res$month >5 ) & (res$eco1 == 6 | res$eco1 == 7),]
+pro4h = res[res$fire_day == 4 & res$human == 2 & ( res$month <=8 & res$month >5 ) & (res$eco1 == 6 | res$eco1 == 7),]
+pro5h = res[res$fire_day == 5 & res$human == 2 & ( res$month <=8 & res$month >5 ) & (res$eco1 == 6 | res$eco1 == 7),]
+
+boxplot(pro1h$growth_km,pro2h$growth_km,pro3h$growth_km,pro4h$growth_km,pro5h$growth_km,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,300), cex.lab=1.4,cex.axis = 1.3)
+
+t.test(log(pro1$growth_km),log(pro1h$growth_km))
+t.test(log(pro2$growth_km),log(pro2h$growth_km))
+t.test(log(pro3$growth_km),log(pro3h$growth_km))
+t.test(log(pro4$growth_km),log(pro4h$growth_km))
+t.test(log(pro5$growth_km),log(pro5h$growth_km))
+
+me[1] =mean(pro1$growth_km,na.omit=T)
+me[2] =mean(pro2$growth_km,na.omit=T)
+me[3] =mean(pro3$growth_km,na.omit=T)
+me[4] =mean(pro4$growth_km,na.omit=T)
+me[5] =mean(pro5$growth_km,na.omit=T)
+
+me1[1] =mean(pro1h$growth_km,na.rm=T)
+me1[2] =mean(pro2h$growth_km,na.rm=T)
+me1[3] =mean(pro3h$growth_km,na.rm=T)
+me1[4] =mean(pro4h$growth_km,na.rm=T)
+me1[5] =mean(pro5h$growth_km,na.rm=T)
+
+par(mgp=c(2.3,1,0))  
+plot(me,type="o", ylim=c(0,150),ylab=expression("fire size (km"^2*")"),xlab="", xaxt='n', lty = 1, lwd = 2,cex.lab=1.2)
+axis(side=1, at=c(1:5),labels=days)
+points(me1,type="o",lty = 2, lwd = 2)
+```
+
+
+```{r}
+pro1 = res[res$fire_day == 1 & res$human == 1 & ( res$month >8 ) & (res$eco1 == 6 | res$eco1 == 7),]
+pro2 = res[res$fire_day == 2 & res$human == 1 & ( res$month >8 ) & (res$eco1 == 6 | res$eco1 == 7),]
+pro3 = res[res$fire_day == 3 & res$human == 1 & ( res$month >8 ) & (res$eco1 == 6 | res$eco1 == 7),]
+pro4 = res[res$fire_day == 4 & res$human == 1 & ( res$month >8 ) & (res$eco1 == 6 | res$eco1 == 7),]
+pro5 = res[res$fire_day == 5 & res$human == 1 & ( res$month >8 ) & (res$eco1 == 6 | res$eco1 == 7),]
+
+boxplot(pro1$growth_km,pro2$growth_km,pro3$growth_km,pro4$growth_km,pro5$growth_km,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,300), cex.lab=1.4,cex.axis = 1.3)
+
+pro1h = res[res$fire_day == 1 & res$human == 2 & ( res$month >8 ) & (res$eco1 == 6 | res$eco1 == 7),]
+pro2h = res[res$fire_day == 2 & res$human == 2 & ( res$month >8 ) & (res$eco1 == 6 | res$eco1 == 7),]
+pro3h = res[res$fire_day == 3 & res$human == 2 & ( res$month >8 ) & (res$eco1 == 6 | res$eco1 == 7),]
+pro4h = res[res$fire_day == 4 & res$human == 2 & (res$month >8 ) & (res$eco1 == 6 | res$eco1 == 7),]
+pro5h = res[res$fire_day == 5 & res$human == 2 & ( res$month >8 ) & (res$eco1 == 6 | res$eco1 == 7),]
+
+boxplot(pro1h$growth_km,pro2h$growth_km,pro3h$growth_km,pro4h$growth_km,pro5h$growth_km,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,300), cex.lab=1.4,cex.axis = 1.3)
+
+```
+
+`
 
 ############ how many days does it take to reach 75% burnt area #################
 
@@ -90,6 +494,33 @@ fr = barplot(fg,xlab="Days after ignition",ylab="Number of fires",cex.lab=1.4,ce
 axis(1,c(0.7,5.5,11.5,17.5,23.5,29.5,35.5,41.5,47.5,53.5,59.5,65.5),labels=c(1,5,10,15,20,25,30,35,40,45,50,55),cex.axis = 1.3)
 legend("topright",legend = c("human","lightning"), fill=c("grey","black"),cex=1.4,bty = "n")
 
+tiff(file="/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/time_to_reach75_v1.tif",width=2500,height=2000, res=350)
+fr = barplot(fg,xlab="Days after ignition",ylab="Number of fires",cex.lab=1.4,cex.axis = 1.3, xlim=c(1,65), ylim=c(0,30))
+axis(1,c(0.7,5.5,11.5,17.5,23.5,29.5,35.5,41.5,47.5,53.5,59.5,65.5),labels=c(1,5,10,15,20,25,30,35,40,45,50,55),cex.axis = 1.3)
+legend("topright",legend = c("human","lightning"), fill=c("grey","black"),cex=1.4,bty = "n")
+dev.off()
+
+```
+
+
+```{r}
+
+res=res[res$ros_km>0,]
+res_f = res[res$max_land == 1,]
+res_p = res[res$max_land != 1,]
+
+#just show the plot here
+plot(res_f$mean_frp~res_f$ros_km,log="xy",xlim=c(0.005,30),ylim=c(0.1,180),xaxt="n",ylab="mean FRP (MW)",xlab="Rate-of-Spread (km/day)", cex.lab=1.4,cex.axis = 1.3,col="darkgreen")
+
+marks=c(0.01,0.1,1,10)
+tiff("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_FRP_ros_v2.tif", width = 5, height = 5, units = 'in', res = 300)
+plot(res_f$mean_frp~res_f$ros_km,log="xy",xlim=c(0.005,30),ylim=c(0.1,180),xaxt="n",ylab="mean FRP (MW)",xlab="Rate-of-Spread (km/day)", cex.lab=1.4,cex.axis = 1.3,col="darkgreen")
+points(res_p$mean_frp~res_p$ros_km,col="orange")
+axis(1,at=marks,labels=marks,cex.axis=1.4 )
+legend( x="topleft",legend=c("Forest","Grass & shrub"),col=c("darkgreen","orange"),cex=1.2,pch=1,bty = "n")
+dev.off()
+
+
 
 ```
 
@@ -99,7 +530,7 @@ legend("topright",legend = c("human","lightning"), fill=c("grey","black"),cex=1.
 ```{r}
  
 res$ros1 = res$max_ros+1
-res$ros_km = (res$median95_ros*24)/1000
+
 
 out1 = subset(res,cause == 1 )   #1=lightning; 14=unknown; 7=arson
 out2 = subset(res,cause !=1 & cause != 14 )
@@ -176,8 +607,8 @@ mean(lig2$growth, na.rm=T)
 mean(lig3$growth, na.rm=T)
 mean(lig4$growth, na.rm=T)
 mean(lig5$growth, na.rm=T)
-t.test(log10(hum1$growth),log10(lig1$growth))
-t.test(log10(hum2$growth),log10(lig2$growth))
+#t.test(log10(hum1$growth),log10(lig1$growth))
+#t.test(log10(hum2$growth),log10(lig2$growth))
 t.test(log10(hum3$growth),log10(lig3$growth))
 t.test(log10(hum4$growth),log10(lig4$growth))
 t.test(log10(hum5$growth),log10(lig5$growth))
@@ -223,7 +654,70 @@ fr = barplot(fg, beside=TRUE,xlab="Rate-of-Spread (km/day)",ylab="Number of fire
 axis(1,at=c(0.5,3.5,6.5,9.5,12.5,15.5,18.5,21.5,24.5,27.5,30.5,33.5),labels=hist.a$breaks,cex.axis = 1.3)
 legend("topright",legend = c("human","lightning"), fill=c("grey","black"),cex=1.4,bty = "n")
 
+
+out1 = subset(res,cause == 1 & (eco1 == 6 | eco1 == 7) & (month > 9))   #1=lightning; 14=unknown; 7=arson
+out2 = subset(res,cause !=1 & cause != 14 & (eco1 == 6 | eco1 == 7) & (month > 9))
+
+hist.a =hist(out1$ros_km,breaks =c(0,0.01,0.05,0.1,0.25,0.5,1,2,5,10,20,30),plot=F)
+hist.b =hist(out2$ros_km,breaks =c(0,0.01,0.05,0.1,0.25,0.5,1,2,5,10,20,30),plot=F)
+fg = rbind(hist.a$counts,hist.b$counts)
+
+fr = barplot(fg, beside=TRUE,xlab="Rate-of-Spread (km/day)",ylab="Number of fire days",cex.lab=1.4,cex.axis = 1.3)
+axis(1,at=c(0.5,3.5,6.5,9.5,12.5,15.5,18.5,21.5,24.5,27.5,30.5,33.5),labels=hist.a$breaks,cex.axis = 1.3)
+legend("topright",legend = c("human","lightning"), fill=c("grey","black"),cex=1.4,bty = "n")
+
+out1 = subset(res,cause == 1 & eco1 == 11 & (month > 9))   #1=lightning; 14=unknown; 7=arson
+out2 = subset(res,cause !=1 & cause != 14 & eco1 == 11 & (month > 9))
+
+hist.a =hist(out1$ros_km,breaks =c(0,0.01,0.05,0.1,0.25,0.5,1,2,5,10,20,30),plot=F)
+hist.b =hist(out2$ros_km,breaks =c(0,0.01,0.05,0.1,0.25,0.5,1,2,5,10,20,30),plot=F)
+fg = rbind(hist.a$counts,hist.b$counts)
+
+fr = barplot(fg, beside=TRUE,xlab="Rate-of-Spread (km/day)",ylab="Number of fire days",cex.lab=1.4,cex.axis = 1.3)
+axis(1,at=c(0.5,3.5,6.5,9.5,12.5,15.5,18.5,21.5,24.5,27.5,30.5,33.5),labels=hist.a$breaks,cex.axis = 1.3)
+legend("topright",legend = c("human","lightning"), fill=c("grey","black"),cex=1.4,bty = "n")
+
+
+out1 = subset(res,cause == 1 & (eco1 == 6 | eco1 == 7) & (month > 5 & month<10))   #1=lightning; 14=unknown; 7=arson
+out2 = subset(res,cause !=1 & cause != 14 & (eco1 == 6 | eco1 == 7) & (month > 5 & month<10))
+
+hist.a =hist(out1$ros_km,breaks =c(0,0.01,0.05,0.1,0.25,0.5,1,2,5,10,20,30),plot=F)
+hist.b =hist(out2$ros_km,breaks =c(0,0.01,0.05,0.1,0.25,0.5,1,2,5,10,20,30),plot=F)
+fg = rbind(hist.a$counts,hist.b$counts)
+
+fr = barplot(fg, beside=TRUE,xlab="Rate-of-Spread (km/day)",ylab="Number of fire days",cex.lab=1.4,cex.axis = 1.3)
+axis(1,at=c(0.5,3.5,6.5,9.5,12.5,15.5,18.5,21.5,24.5,27.5,30.5,33.5),labels=hist.a$breaks,cex.axis = 1.3)
+legend("topright",legend = c("human","lightning"), fill=c("grey","black"),cex=1.4,bty = "n")
+
+out1 = subset(res,cause == 1 & eco1 == 11  & (month > 5 & month<10))   #1=lightning; 14=unknown; 7=arson
+out2 = subset(res,cause !=1 & cause != 14 & eco1 == 11  & (month > 5 & month<10))
+
+hist.a =hist(out1$ros_km,breaks =c(0,0.01,0.05,0.1,0.25,0.5,1,2,5,10,20,30),plot=F)
+hist.b =hist(out2$ros_km,breaks =c(0,0.01,0.05,0.1,0.25,0.5,1,2,5,10,20,30),plot=F)
+fg = rbind(hist.a$counts,hist.b$counts)
+
+fr = barplot(fg, beside=TRUE,xlab="Rate-of-Spread (km/day)",ylab="Number of fire days",cex.lab=1.4,cex.axis = 1.3)
+axis(1,at=c(0.5,3.5,6.5,9.5,12.5,15.5,18.5,21.5,24.5,27.5,30.5,33.5),labels=hist.a$breaks,cex.axis = 1.3)
+legend("topright",legend = c("human","lightning"), fill=c("grey","black"),cex=1.4,bty = "n")
+
 ```
+
+
+############ are ROS the same for light & human under the same conditions
+
+```{r}
+out1 = subset(res,cause == 1 )   #1=lightning; 14=unknown; 7=arson
+out2 = subset(res,cause !=1 & cause != 14 )
+
+plot(out1$vpd,log(out1$ros_km))
+points(out2$vpd,log(out2$ros_km),col="red")
+
+summary(lm(out1$vpd~log(out1$ros_km+1),na.omit=T))
+summary(lm(out2$vpd~log(out2$ros_km+1)))
+
+```
+
+
 
 
 ############## analysis of the first day #################
@@ -327,11 +821,165 @@ text(1,190,"c)",cex=1.8)
 
 
 
+```{r}
+data_s=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_dNBR_V6.txt",row.names=NULL)
+rownames(data_s) <- c()
+
+data_s1 = as.data.frame(data_s[,2:19])
+
+
+names(data_s1) = c("lon","lat","fire","nr_day","max_land","mean_land","elevation","biomass","mean_ros","ros95","mean_dnbr","dnbr95","mean_rdnbr","rdnbr95","mean_BA_red","BA_red95","cause","size")
+length(data_s1$lon)
+data_s1$mean_ros =as.numeric(as.character(data_s1$mean_ros))
+data_s1$ros95 =as.numeric(as.character(data_s1$ros95))
+data_s1$mean_dnbr =as.numeric(as.character(data_s1$mean_dnbr))
+data_s1$dnbr95 =as.numeric(as.character(data_s1$dnbr95))
+data_s1$mean_rdnbr =as.numeric(as.character(data_s1$mean_rdnbr))
+data_s1$rdnbr95 =as.numeric(as.character(data_s1$rdnbr95))
+data_s1$lon =as.numeric(as.character(data_s1$lon))
+data_s1$lat =as.numeric(as.character(data_s1$lat))
+
+data_s1$mean_land[is.na(data_s1$mean_land)]=data_s1$max_land[is.na(data_s1$mean_land)] #mean landcover gives NA when only one landcover is present
+data_s1$mean_land =as.numeric(as.character(data_s1$mean_land))
+data_s1$mean_BA_red =as.numeric(as.character(data_s1$mean_BA_red))
+data_s1$BA_red95 =as.numeric(as.character(data_s1$BA_red95))
+data_s1$biomass =as.numeric(as.character(data_s1$biomass))
+data_s1$elevation =as.numeric(as.character(data_s1$elevation))
+data_s1$cause =as.numeric(as.character(data_s1$cause))
+
+data_s1=na.omit(data_s1)
+shape = shapefile("/Users/stijnhantson/Documents/data/veg_california/ca_eco_l3/ca_eco_l3.shp")
+pts <- SpatialPoints(data_s1[,c("lon","lat")],P4S.latlon)
+shape = spTransform(shape,P4S.latlon)
+eco = over(pts, shape)
+data_s1$L1CODE = eco$NA_L1CODE
+data_s1$L3name = eco$US_L3NAME
+data_s1$L1CODE =as.numeric(as.character(data_s1$L1CODE))
+
+#data_s1$log_ros = log10(data_s1$mean_ros)
+#data_s1$log_ros95 = log10(data_s1$ros95)
+#data_s1 = data_s1[data_s1$mean_ros >0,]
+data_s1$human[data_s1$cause !=1 & data_s1$cause !=14 & data_s1$cause !=17]=1
+data_s1$human[data_s1$cause ==1 ]=2
+
+data_s1$ros_km = (data_s1$ros95 *24)/1000
+data_test = data_s1[data_s1$max_land == 1,]
+data_test1 = data_s1[data_s1$L1CODE == 6 |data_s1$L1CODE == 7 ,]
+data_test2 = data_s1[data_s1$L1CODE == 11,]
+
+data_test1 = data_s1[data_s1$human == 1 & (data_s1$L1CODE == 6 |data_s1$L1CODE == 7),]
+data_test2 = data_s1[data_s1$human == 2 & (data_s1$L1CODE == 6 |data_s1$L1CODE == 7),]
+
+data_test1 = data_s1[data_s1$human == 1 ,]
+data_test2 = data_s1[data_s1$human == 2 ,]
+
+data_test1=na.omit(data_test1)
+data_test2=na.omit(data_test2)
+
+plot(data_s1$ros_km, data_s1$mean_BA_red,log="x",xlab="Rate-of-Spread (km/day)",ylab="Tree mortality (%)",xlim=c(0.005,30),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, col="black")
+axis(1,at=marks,labels=marks,cex.axis=1.4 )
+points(data_test2$ros_km, data_test2$mean_BA_red,cex=0.8, col="darkgrey")
+points(data_test1$ros_km, data_test1$mean_BA_red,cex=0.8, col="orange")
+
+
+marks=c(0.01,0.1,1,10)
+tiff("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_basa_ros_all_v3.tif", width = 5, height = 5, units = 'in', res = 300)
+plot(data_s1$ros_km, data_s1$mean_BA_red,log="x",xlab="Rate-of-Spread (km/day)",ylab="Tree mortality (%)",xlim=c(0.005,30),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, col="black")
+axis(1,at=marks,labels=marks,cex.axis=1.4 )
+points(data_test2$ros_km, data_test2$mean_BA_red,cex=0.8, col="darkgrey")
+points(data_test1$ros_km, data_test1$mean_BA_red,cex=0.8, col="orange")
+lines(lowess(data_s1$ros_km, data_s1$mean_BA_red, f=0.41),col="black", lwd=3)
+lines(lowess(data_test1$ros_km, data_test1$mean_BA_red, f=0.41),col="darkgoldenrod3", lwd=3)
+lines(lowess(data_test2$ros_km, data_test2$mean_BA_red, f=0.41),col="gray40", lwd=3)
+legend("topleft",legend=c("all","human","lightning"),col = c("black","darkgoldenrod3", "gray40"),lty=1, bty="n",lwd = 3, cex=1)
+dev.off()
+
+
+
+data_test1 = data_s1[data_s1$human == 1 & data_s1$max_land <1.5,]
+data_test2 = data_s1[data_s1$human == 2 & data_s1$max_land <1.5,]
+data_forest = data_s1[data_s1$max_land <1.5,]
+data_test1=na.omit(data_test1)
+data_test2=na.omit(data_test2)
+
+marks=c(0.01,0.1,1,10)
+tiff("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_basa_ros_forest_v3.tif", width = 5, height = 5, units = 'in', res = 300)
+plot(data_forest$ros_km, data_forest$mean_BA_red,log="x",xlab="Rate-of-Spread (km/day)",ylab="Tree mortality (%)",xlim=c(0.005,30),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, col="black")
+axis(1,at=marks,labels=marks,cex.axis=1.4 )
+points(data_test2$ros_km, data_test2$mean_BA_red,cex=0.8, col="darkgrey")
+points(data_test1$ros_km, data_test1$mean_BA_red,cex=0.8, col="orange")
+lines(lowess(data_forest$ros_km, data_forest$mean_BA_red, f=0.41),col="black", lwd=3)
+lines(lowess(data_test1$ros_km, data_test1$mean_BA_red, f=0.41),col="darkgoldenrod3", lwd=3)
+lines(lowess(data_test2$ros_km, data_test2$mean_BA_red, f=0.41),col="gray40", lwd=3)
+legend("topleft",legend=c("all","human","lightning"),col = c("black","darkgoldenrod3", "gray40"),lty=1, bty="n",lwd = 3, cex=1)
+dev.off()
+
+
+plot(data_forest$ros_km, data_forest$mean_BA_red,log="x",xlab="Rate-of-Spread (km/day)",ylab="Tree mortality (%)",xlim=c(0.005,30),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, col="black")
+axis(1,at=marks,labels=marks,cex.axis=1.4 )
+points(data_test2$ros_km, data_test2$mean_BA_red,cex=0.8, col="darkgrey")
+points(data_test1$ros_km, data_test1$mean_BA_red,cex=0.8, col="orange")
+lines(lowess(data_forest$ros_km, data_forest$mean_BA_red, f=0.45),col="black", lwd=3)
+lines(lowess(data_test1$ros_km, data_test1$mean_BA_red, f=0.45),col="darkgoldenrod3", lwd=3)
+lines(lowess(data_test2$ros_km, data_test2$mean_BA_red, f=0.45),col="gray40", lwd=3)
+
+
+```
+
+
+```{r}
+
+data_test = data_s1[data_s1$max_land == 1,]
+data_test1 = data_s1[data_s1$L1CODE == 6 |data_s1$L1CODE == 7 ,]
+data_test2 = data_s1[data_s1$L1CODE == 11,]
+
+data_test1 = data_s1[data_s1$human == 1 & (data_s1$L1CODE == 6 |data_s1$L1CODE == 7),]
+data_test2 = data_s1[data_s1$human == 2 & (data_s1$L1CODE == 6 |data_s1$L1CODE == 7),]
+
+data_test1 = data_s1[data_s1$human == 1 ,]
+data_test2 = data_s1[data_s1$human == 2 ,]
+
+
+fast = data_s1[data_s1$ros_km > 1,]
+fast_hum = fast[fast$human == 1,]
+
+sum(fast$size)/sum(data_s1$size)
+length(fast$size)/length(data_s1$size)
+
+sum(fast_hum$size, na.rm=T)/sum(fast$size)
+length(fast_hum$size)/length(fast$size)
+
+
+quan = quantile(data_s1$ros_km,0.5)
+fast = data_s1[data_s1$ros_km > quan,]
+slow = data_s1[data_s1$ros_km < quan,]
+fast_hum = fast[fast$human == 1,]
+
+sum(fast$size)/sum(data_s1$size)
+length(fast$size)/length(data_s1$size)
+sum((data_s1$mean_BA_red*data_s1$size))/(sum(data_s1$size))
+mean(data_s1$mean_BA_red)
+
+sum(fast_hum$size, na.rm=T)/sum(fast$size)
+length(fast_hum$size)/length(fast$size)
+sum((fast$mean_BA_red*fast$size))/(sum(fast$size))
+mean(fast$mean_BA_red)
+sum((slow$mean_BA_red*slow$size))/(sum(slow$size))
+mean(slow$mean_BA_red)
+
+
+```
+
+
+
 
 When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
 
 The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
 
+
+
+```
 
 
 
