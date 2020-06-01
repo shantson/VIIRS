@@ -115,7 +115,10 @@ for (p in 1:length(viirs_list)){
     total = firespread[firespread$YYYYMMDD == max(firespread$YYYYMMDD) ,]
     total_area = gArea(total) 
 
-    eco = as.data.frame(over(frr,shape))  
+ #   eco = as.data.frame(over(frr,shape))  
+    eco_inter=intersect(frr,shape)
+    eco_inter$area = area(eco_inter)
+    eco= eco_inter[which.max(eco_inter$area),]
     eco=eco[1,]
     eco1= eco$NA_L1CODE
     eco2= eco$NA_L2CODE
