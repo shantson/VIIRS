@@ -213,7 +213,6 @@ ras_list =  list.files(ras_dir, pattern = ".tif$", recursive = TRUE, full.names=
 modis_list = list.files("/Users/stijnhantson/Documents/data/MCD64_v6/Win03/", pattern = "burndate.tif$", recursive = TRUE, full.names=T)
 
 
-
 tiff(file="/Users/stijnhantson/Documents/projects/VIIRS_ros/test1.tif",width=3000,height=3000, res=350)
 par(mfrow=c(5,3),mar=c(3,3,1,0))
 ff1=0
@@ -284,7 +283,9 @@ for (ras_sh in 1:((length(ras_list))/2)){
   
   if (names[ras_sh] != "holloway"){
     ff1=rbind(ff1,ff)
-  }}
+  }
+  removeTmpFiles(h=0)
+  }
 
 ff1=ff[-1,]
 plot(ff1$count.x,ff1$count.y)
@@ -350,6 +351,7 @@ mp=barplot(counts, main="",
 colnames(counts)=c("0-200","200-600","600-1500","1500-3000",">3000")
 mtext(text = colnames(counts), side = 1, at = mp[2,], line = 0)
 title(xlab=expression(paste("Fire expantion (ha day"^"2"*")")), mgp=c(1.6,1,0),cex.lab=1.2)
+dev.off()
 
 ############ validate  fire size ################
 

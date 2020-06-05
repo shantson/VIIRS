@@ -106,9 +106,34 @@ dr1$YEAR_=as.numeric(as.character(dr1$YEAR_))
 dr1$Shape_Area=as.numeric(as.character(dr1$Shape_Area))
 dr1=dr1[!is.na(dr1$YEAR_), ]
 dr1=dr1[dr1$YEAR_>2011,]
-sum(dr1$Shape_Area)
-sum(dr$Shape_Area)
+sum(dr$Shape_Area)/sum(dr1$Shape_Area)
+sum(na.omit(dr$GIS_ACRES))/sum(na.omit(dr1$GIS_ACRES))
+
+
+dr$sqkm = dr$GIS_ACRES * 0.0040468564224
+max(dr$sqkm)
+dr_h = dr[dr$CAUSE !=1 & dr$CAUSE !=14,]
+dr_l = dr[dr$CAUSE == 1,]
+print("mean fire size for human and lightning fires")
+mean(dr_h$GIS_ACRES)* 0.0040468564224
+mean(dr_l$GIS_ACRES)* 0.0040468564224
+
+quantile(dr_h$GIS_ACRES)* 0.0040468564224
+quantile(dr_l$GIS_ACRES)* 0.0040468564224
+
+hist.a =hist(dr$sqkm,breaks =c(0,10,25,50,100,250,1000,2000),plot=F)
+
+fr = barplot(hist.a$counts, beside=TRUE,xlab=expression('Fire size (km'^2*')'),ylab="Number of fires",cex.lab=1.4,cex.axis = 1.3)
+axis(1,at=c(0.1,1.3,2.5,3.7,4.9,6.1,7.3,8.5),labels=c(0,10,25,50,100,250,1000,2000),cex.axis = 1.3)
+
+pdf(file="/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/Sx_pdf_firesize.pdf",width=7,height=6)
+fr = barplot(hist.a$counts, beside=TRUE,xlab=expression('Fire size (km'^2*')'),ylab="Number of fires",cex.lab=1.4,cex.axis = 1.3)
+axis(1,at=c(0.1,1.3,2.5,3.7,4.9,6.1,7.3,8.5),labels=c(0,10,25,50,100,250,1000,2000),cex.axis = 1.3)
+dev.off()
+
 ```
+
+
 1) frap 
 2) only fire growth datasets
 
@@ -1370,29 +1395,72 @@ data_test2 = data_s1[data_s1$human == 2 ,]
 fast = data_s1[data_s1$ros_km > 1,]
 fast_hum = fast[fast$human == 1,]
 
+print("% BA and % of fire days fast fires > 1km/day")
 sum(fast$size)/sum(data_s1$size)
 length(fast$size)/length(data_s1$size)
 
+print("% BA  fast fires due to human ignition % of fire days human caused fast fires > 1km/day")
 sum(fast_hum$size, na.rm=T)/sum(fast$size)
 length(fast_hum$size)/length(fast$size)
 
+all_min1 = data_s1[data_s1$nr_day != 1,] # remove first fire spread day from statistics
 
-quan = quantile(data_s1$ros_km,0.5)
+quan = quantile(data_s1$ros_km,0.9)
 fast = data_s1[data_s1$ros_km > quan,]
 slow = data_s1[data_s1$ros_km < quan,]
 fast_hum = fast[fast$human == 1,]
 
-sum(fast$size)/sum(data_s1$size)
-length(fast$size)/length(data_s1$size)
+print("fastest 10% fires cause xxx% of BA")
+sum(fast$size)/sum(all_min1$size)
+length(fast$size)/length(all_min1$size)
+print("mean tree mortality weighted by BA and just mean")
 sum((data_s1$mean_BA_red*data_s1$size))/(sum(data_s1$size))
 mean(data_s1$mean_BA_red)
 
+print("% BA due to human fires amoung fastest 10% fire days")
 sum(fast_hum$size, na.rm=T)/sum(fast$size)
+print("% fire number due to human fires amoung fastest 10% fire days")
 length(fast_hum$size)/length(fast$size)
+print("% tree mortality fast fires weighthed and not")
 sum((fast$mean_BA_red*fast$size))/(sum(fast$size))
 mean(fast$mean_BA_red)
+print("% tree mortality slow fires weighthed and not")
 sum((slow$mean_BA_red*slow$size))/(sum(slow$size))
 mean(slow$mean_BA_red)
+
+# plot BA per rate of spread 
+out1 = subset(data_s1,cause == 1 )   #1=lightning; 14=unknown; 7=arson
+out2 = subset(data_s1,cause !=1 & cause != 14 )
+
+breaks =c(0,0.5,1,2,3,5,7,10,20,30)
+
+tt=0
+pp=0
+for (i in 1:9){
+
+  kr = out1[out1$ros_km >= breaks[i] & out1$ros_km < breaks[i+1],]
+  kp = out2[out2$ros_km >= breaks[i] & out2$ros_km < breaks[i+1],]
+
+tt[i]=sum(kr$size, na.rm=T)/1000000
+pp[i]= sum(kp$size, na.rm=T)/1000000
+}
+
+fg = rbind(tt,pp)
+
+par(mar=c(4, 5, 2,0.1))
+fr = barplot(fg, beside=TRUE,xlab="Rate-of-Spread (km/day)",ylab=expression('burnt area (km'^2*')'),ylim=c(0,2000),cex.lab=1.4,cex.axis = 1.3)
+axis(1,at=c(0.5,3.5,6.5,9.5,12.5,15.5,18.5,21.5,24.5,27.5),labels=hist.a$breaks,cex.axis = 1.3)
+legend("topright",legend = c("human","lightning"), fill=c("grey","black"),cex=1.4,bty = "n")
+
+
+tiff("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/BA_per_ros_hist.tif", width = 6, height = 5, units = 'in', res = 300)
+par(mar=c(4, 5, 2,0.1))
+fr = barplot(fg, beside=TRUE,xlab="Rate-of-Spread (km/day)",ylab=expression('burnt area (km'^2*')'),ylim=c(0,2000),cex.lab=1.4,cex.axis = 1.3)
+axis(1,at=c(0.5,3.5,6.5,9.5,12.5,15.5,18.5,21.5,24.5,27.5),labels=hist.a$breaks,cex.axis = 1.3)
+legend("topright",legend = c("human","lightning"), fill=c("grey","black"),cex=1.4,bty = "n")
+dev.off() 
+
+
 
 
 ```
