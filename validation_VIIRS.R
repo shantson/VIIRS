@@ -213,8 +213,6 @@ ras_list =  list.files(ras_dir, pattern = ".tif$", recursive = TRUE, full.names=
 modis_list = list.files("/Users/stijnhantson/Documents/data/MCD64_v6/Win03/", pattern = "burndate.tif$", recursive = TRUE, full.names=T)
 
 
-tiff(file="/Users/stijnhantson/Documents/projects/VIIRS_ros/test1.tif",width=3000,height=3000, res=350)
-par(mfrow=c(5,3),mar=c(3,3,1,0))
 ff1=0
 final_size_v=0
 final_size_r=0
@@ -281,13 +279,14 @@ for (ras_sh in 1:((length(ras_list))/2)){
     }
   }
   
+  print(length(ff$value))
+  
   if (names[ras_sh] != "holloway"){
     ff1=rbind(ff1,ff)
   }
   removeTmpFiles(h=0)
   }
 
-ff1=ff[-1,]
 plot(ff1$count.x,ff1$count.y)
 reg =lm(ff1$count.x~ff1$count.y)
 summary(reg)$r.squared
@@ -344,9 +343,11 @@ MCD64=histrv$counts
 max(ff1$count,na.rm=T)
 
 counts <- t(cbind(reference,VIIRS,MCD64))
+pdf(file="/Users/stijnhantson/Documents/projects/VIIRS_ros/validation_v1.pdf",width=5,height=4.25)
+par(mar=c(3,4,1,0))
 mp=barplot(counts, main="",
-           xlab="", col=c("lightgrey","black","darkgrey"),
-           legend = rownames(counts), beside=TRUE,density=c(NA,8,20),angle = c(0,135,45),names.arg = c("0-200","200-600","600-1500","1500-3000",">3000"), axisnames = FALSE)
+           xlab="", ylab="Fire days",col=c("lightgrey","black","darkgrey"),
+           legend = rownames(counts), beside=TRUE,density=c(NA,8,20),angle = c(0,135,45),names.arg = c("0-200","200-600","600-1500","1500-3000",">3000"), axisnames = FALSE,cex.lab=1.2)
 
 colnames(counts)=c("0-200","200-600","600-1500","1500-3000",">3000")
 mtext(text = colnames(counts), side = 1, at = mp[2,], line = 0)
