@@ -1013,6 +1013,7 @@ legend("topright",legend = c("human","lightning"), fill=c("grey","black"),cex=1.
 out1 = subset(res,cause == 1 )   #1=lightning; 14=unknown; 7=arson
 out2 = subset(res,cause !=1 & cause != 14 )
 
+
 mean(out1$ros_km,na.rm=T)
 mean(out2$ros_km,na.rm=T)
 #0,0.25,0.5,1,2,3,5,7,10,20,30
@@ -1155,6 +1156,7 @@ summary(lm(out1$vpd~log(out1$ros_km+1),na.omit=T))
 summary(lm(out2$vpd~log(out2$ros_km+1)))
 
 ```
+
 
 
 
@@ -1516,6 +1518,36 @@ dev.off()
 
 ```
 
+
+
+############  analysis of MTBS temporal trend   ###############
+```{r}
+mtbs_dir="/Users/stijnhantson/Documents/data/MTBS/DATA/"
+year=1984
+k=0
+dnbr_all=0
+rdnbr_all=0
+for (year in 1984:2017){
+  k=k+1
+mtbs_dir_year = paste(mtbs_dir,year,"/",sep="")
+bndy_list = list.files(mtbs_dir_year, pattern = "burn_bndy.shp$", recursive = F, full.names=T)
+shapefile_list <- lapply(bndy_list, shapefile)
+fires <- do.call(rbind, shapefile_list)
+
+dnbr = raster(paste(mtbs_dir,year,"_dnbr.tif",sep=""))
+  dnbr[dnbr < -2000] <- NA
+  rdnbr = dnbr = raster(paste(mtbs_dir,year,"_rdnbr.tif",sep=""))
+  rdnbr[rdnbr < -2000] <- NA
+  
+dnbr_ext = extract(dnbr,fires)
+rdnbr_ext = extract(rdnbr,fires)
+dnbr_all[k]=mean(unlist(dnbr_ext),na.rm=T)
+rdnbr_all[k]=mean(unlist(rdnbr_ext),na.rm=T)
+
+}
+
+
+```
 
 
 

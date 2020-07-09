@@ -19,9 +19,9 @@ library(stats)
 
 sep_dis = 1900                    #distance in m to seprate ignitions, 6 pixels = 2250
 plot_gif = F                      # whether you want to output the png for each timestep
-only_night = F                    # daily or twice daily fire line
+only_night = T                    # daily or twice daily fire line
 
-out_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results8/"
+out_dir = "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_results8_daily/"
 out_dir2 = "/Users/stijnhantson/Documents/projects/VIIRS_ros/test/"
 
 mod = raster("/Users/stijnhantson/Documents/data/MCD64_v6/Win03/2000/MCD64monthly.A2000336.Win03.006.burndate.tif")
