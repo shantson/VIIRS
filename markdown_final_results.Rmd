@@ -106,6 +106,7 @@ dr1$YEAR_=as.numeric(as.character(dr1$YEAR_))
 dr1$Shape_Area=as.numeric(as.character(dr1$Shape_Area))
 dr1=dr1[!is.na(dr1$YEAR_), ]
 dr1=dr1[dr1$YEAR_>2011,]
+
 sum(dr$Shape_Area)/sum(dr1$Shape_Area)
 sum(na.omit(dr$GIS_ACRES))/sum(na.omit(dr1$GIS_ACRES))
 
@@ -192,6 +193,63 @@ res$ros_km = (res$median95_ros*24)/1000
 res$ros_mean_km = (res$mean_ros*24)/1000
 
 ```
+########  is there relation between days untill 75% and fire size ##########
+
+```{r}
+dr1 =shapefile("/Users/stijnhantson/Documents/data/FRAP/fire18_1.shp")
+dr1$YEAR_=as.numeric(as.character(dr1$YEAR_))
+dr1$Shape_Area=as.numeric(as.character(dr1$Shape_Area))
+dr1=dr1[!is.na(dr1$YEAR_), ]
+dr1=dr1[dr1$YEAR_>2011,]
+
+fi = dr1[dr1$OBJECTID==17495,]
+dr1=subset(dr1, GIS_ACRES>300)
+
+summary(dr1)
+res75 = res[res$per_ba > 0.999,]
+
+peak_day1 = as.data.frame(aggregate(res75$fire_day, by = list(res75$firename,res75$year), min))
+p=13
+year1=0
+first=0
+last=0
+len_d=0
+day75=0
+firenam1=0
+name_fire=0
+size=0
+k=0
+for (p in 1:(length(peak_day1$Group.1)))
+{
+  print(p)
+  year = peak_day1[p,2]
+    firenam = as.character(peak_day1[p,1]) 
+  
+  fir = dr1[which(dr1$YEAR_==year & dr1$FIRE_NAME==firenam),]
+  if (length(fir)>1){
+    maxsize = max(fir$GIS_ACRES)
+    fir = fir[fir$GIS_ACRES ==  maxsize,]
+  }
+  
+  if (!is.na(fir$ALARM_DATE)  | !is.na(fir$ALARM_DATE)){
+    k=k+1
+    day75[k] = peak_day1[p,3]
+    firenam1[k]=firenam 
+  year1[k] = year
+  first[k]= fir$ALARM_DATE
+  last[k] = fir$CONT_DATE
+  len_d[k] = as.numeric(as.Date(fir$CONT_DATE) -as.Date(fir$ALARM_DATE))
+ name_fire[k]= fir$OBJECTID
+    size[k] = fir$GIS_ACRES
+  }
+}
+
+plot(len_d,day75, xlab="fire duration FRAP (days)", ylab="fire duration VIIRS (days)")
+
+```
+
+
+
 
 ####### plot mean vs max fire rate-of-spread ##################
 ```{r}
@@ -1522,28 +1580,56 @@ dev.off()
 
 ############  analysis of MTBS temporal trend   ###############
 ```{r}
+library(raster)
+library(rgeos)
 mtbs_dir="/Users/stijnhantson/Documents/data/MTBS/DATA/"
+med=shapefile("/Users/stijnhantson/Documents/data/veg_california/med_cal.shp")
+north=shapefile("/Users/stijnhantson/Documents/data/veg_california/north_cal.shp")
+
 year=1984
 k=0
-dnbr_all=0
-rdnbr_all=0
+dnbr_all_med=0
+rdnbr_all_med=0
+dnbr_all_nor=0
+rdnbr_all_nor=0
+
+len_dnbr_med=0
+len_rdnbr_med=0
+len_dnbr_nor=0
+len_rdnbr_nor=0
 for (year in 1984:2017){
+  print(year)
   k=k+1
 mtbs_dir_year = paste(mtbs_dir,year,"/",sep="")
-bndy_list = list.files(mtbs_dir_year, pattern = "burn_bndy.shp$", recursive = F, full.names=T)
+bndy_list = list.files(mtbs_dir_year, pattern = "burn_bndy.shp$", recursive = T, full.names=T)
 shapefile_list <- lapply(bndy_list, shapefile)
 fires <- do.call(rbind, shapefile_list)
+fires=gUnaryUnion(fires)
+fire_north = intersect(fires,north)
+fire_med = intersect(fires,med)
 
 dnbr = raster(paste(mtbs_dir,year,"_dnbr.tif",sep=""))
   dnbr[dnbr < -2000] <- NA
   rdnbr = dnbr = raster(paste(mtbs_dir,year,"_rdnbr.tif",sep=""))
   rdnbr[rdnbr < -2000] <- NA
   
-dnbr_ext = extract(dnbr,fires)
-rdnbr_ext = extract(rdnbr,fires)
-dnbr_all[k]=mean(unlist(dnbr_ext),na.rm=T)
-rdnbr_all[k]=mean(unlist(rdnbr_ext),na.rm=T)
+dnbr_ext_med = extract(dnbr,fire_med)
+dnbr_ext_nor = extract(dnbr,fire_north)
 
+rdnbr_ext_med = extract(rdnbr,fire_med)
+rdnbr_ext_nor = extract(rdnbr,fire_north)
+
+dnbr_all_med[k]=mean(unlist(dnbr_ext_med),na.rm=T)
+rdnbr_all_med[k]=mean(unlist(rdnbr_ext_med),na.rm=T)
+dnbr_all_nor[k]=mean(unlist(dnbr_ext_nor),na.rm=T)
+rdnbr_all_nor[k]=mean(unlist(rdnbr_ext_nor),na.rm=T)
+
+len_dnbr_med[k] = length(unlist(dnbr_ext_med))
+len_rdnbr_med[k] = length(unlist(rdnbr_ext_med))
+len_dnbr_nor[k] = length(unlist(dnbr_ext_nor))
+len_rdnbr_nor[k] = length(unlist(rdnbr_ext_nor))
+removeTmpFiles(0)
+gc()
 }
 
 

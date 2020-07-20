@@ -471,3 +471,7 @@ for (i in 1:100){
 
 cbind(res,bet)
 
+
+
+
+
