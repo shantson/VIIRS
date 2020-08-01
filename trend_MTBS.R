@@ -182,3 +182,6 @@ plot(data_dnbr$q95_rdnbr_all_med~data_dnbr$years, ylim=c(0,3000), xlab="year", y
 plot(data_dnbr$q95_bas_all_med~data_dnbr$years, ylim=c(0,100), xlab="year", ylab="q95 mortality (%)")
 
 
+
+
+

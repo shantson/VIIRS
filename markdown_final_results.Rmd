@@ -243,7 +243,6 @@ for (p in 1:(length(peak_day1$Group.1)))
     size[k] = fir$GIS_ACRES
   }
 }
-
 plot(len_d,day75, xlab="fire duration FRAP (days)", ylab="fire duration VIIRS (days)")
 
 ```

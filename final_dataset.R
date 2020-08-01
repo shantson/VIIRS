@@ -43,6 +43,7 @@ bio = raster("/Users/stijnhantson/Documents/data/2010_Biomass.tif")
 viirs_all=shapefile(viirs_list[1])
 result = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
 daily_res = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+year2=0
 
 p=1  
 for (p in 1:length(viirs_list)){
@@ -73,6 +74,8 @@ for (p in 1:length(viirs_list)){
       pi_sf = gIntersects(viirs_sf,frr_sf,byid=TRUE)
       frr = frr[as.vector(pi_sf),]
     }
+    
+    frr = gBuffer(frr,width=0)
     
     
     if (  is.null(firespread$ALARM_DATE) ){
@@ -116,15 +119,40 @@ for (p in 1:length(viirs_list)){
     total_area = gArea(total) 
 
  #   eco = as.data.frame(over(frr,shape))  
+    
     eco_inter=intersect(frr,shape)
+    if (length(eco_inter)>0){
     eco_inter$area = area(eco_inter)
     eco= eco_inter[which.max(eco_inter$area),]
     eco=eco[1,]
     eco1= eco$NA_L1CODE
     eco2= eco$NA_L2CODE
     eco3= eco$NA_L3CODE
+    }else{
+      eco1= NA
+      eco2= NA
+      eco3= NA
+    }
     
+    if (year == year2){}else{
+    removeTmpFiles(0)
+    gc()
+    if (year == 2018){
+      dnbr[]=NA
+      rdnbr[]=NA
+      bas[]=NA
+    }else{
     
+    dnbr = raster(paste("/Users/stijnhantson/Documents/data/MTBS/DATA/",year,"_dnbr.tif",sep=""))
+    dnbr[dnbr < -2000] <- NA
+    
+    rdnbr = raster(paste("/Users/stijnhantson/Documents/data/MTBS/DATA/",year,"_rdnbr.tif",sep=""))
+    rdnbr[rdnbr < -2000] <- NA
+    
+    bas = raster(paste("/Users/stijnhantson/Documents/data/basal_area_reduction_fire_california/basal_area_",year,".tif",sep=""))
+    bas[bas < -2000] <- NA
+    }
+    }
     i=1
     for (i in 1:length(days1)){
     
@@ -228,6 +256,7 @@ for (p in 1:length(viirs_list)){
 #      wrf_v=mean(stack(wrf_v1$tmp_slice1v ,wrf_v2$tmp_slice2v ,wrf_v3$tmp_slice3v,wrf_v4$tmp_slice4v))
 #      wrf_u= mean(stack(wrf_u1$tmp_slice1 ,wrf_u2$tmp_slice2,wrf_u3$tmp_slice3,wrf_u4$tmp_slice4))
       
+      
       gridmet_list= list.files(gridmet_dir, pattern = paste(year,".nc$",sep=""), recursive = TRUE, full.names=T)
       
       l_bi = raster(gridmet_list[1],band = days1[i] )#Burning index
@@ -315,24 +344,63 @@ for (p in 1:length(viirs_list)){
         
       }
       
-      mean_ros = mean(viirs1$ros)
-      max_ros = max(viirs1$ros)
-      median95_ros = quantile(viirs1$ros, 0.95)
+      s_dnbr = as.data.frame(extract(dnbr, fire_new)) 
+      s_rdnbr =as.data.frame(extract(rdnbr, fire_new)) 
+      s_bas =as.data.frame(extract(bas, fire_new)) 
+      
+      if (length(s_dnbr) > 0){
+        mean_dnbr = mean(s_dnbr[,1],na.rm=T)
+      median_dnbr = as.numeric(quantile(s_dnbr[,1], 0.5,na.rm=T))
+      q95_dnbr = as.numeric(quantile(s_dnbr[,1], 0.95,na.rm=T))
+      }else{
+        mean_dnbr =NA
+        median_dnbr =NA
+        q95_dnbr = NA
+      }
+      
+      if (length(s_rdnbr) > 0){
+      mean_rdnbr = mean(s_rdnbr[,1],na.rm=T)
+      median_rdnbr = as.numeric(quantile(s_rdnbr[,1], 0.5,na.rm=T))
+      q95_rdnbr = as.numeric(quantile(s_rdnbr[,1], 0.95,na.rm=T))
+      }else{
+        mean_rdnbr =NA
+        median_rdnbr =NA
+        q95_rdnbr = NA
+      }
+      
+      if (length(s_bas) > 0){
+      mean_bas = mean(s_bas[,1],na.rm=T)
+      median_bas = as.numeric(quantile(s_bas[,1], 0.5,na.rm=T))
+      q95_bas = as.numeric(quantile(s_bas[,1], 0.95,na.rm=T))
+      }else{
+        mean_bas =NA
+        median_bas =NA
+        q95_bas = NA
+      }
+      
+      
+      
+            max_ros = max(viirs1$ros)
+
+      median95_ros = as.numeric(quantile(viirs1$ros, 0.95,na.rm=T))
+      mean_ros = mean(viirs1$ros,na.rm=T)
       
       mean_frp = mean(viirs1$FRP)
-      frp_95 = as.numeric(quantile(viirs1$FRP, 0.95))
+      frp_95 = as.numeric(quantile(viirs1$FRP, 0.95,na.rm=T))
       
-      dail = cbind(mean_ros,max_ros,median95_ros,bi,erc,etr,fm100,fm1000,pet,pr,rmax,rmin,th,tmmn,tmmx,vpd,vs,biomass,max_land,mean_land,growth,total_area, mean_frp, frp_95,firename,fire_day,year,month,doy_out,cause,eco1,eco2,eco3)
+      dail = cbind(mean_ros,max_ros,median95_ros,bi,erc,etr,fm100,fm1000,pet,pr,rmax,rmin,th,tmmn,tmmx,vpd,vs,biomass,max_land,mean_land,growth,total_area, mean_frp, frp_95,firename,fire_day,year,month,doy_out,cause,eco1,eco2,eco3,mean_dnbr,mean_rdnbr,mean_bas,median_dnbr,median_rdnbr,median_bas,q95_dnbr,q95_rdnbr,q95_bas)
       daily_res = rbind(daily_res, dail)
       #    result = rbind(result, viirs2)
       
     }
+    year2=year
+
   }
 }    
 
 
 writeOGR(result, "/Users/stijnhantson/Documents/projects/VIIRS_ros/", layer= "all_ros_meteo", driver="ESRI Shapefile", overwrite_layer = T)
-write.table(daily_res, "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_dataset_V3.txt",row.names = F, sep="\t")
+write.table(daily_res, "/Users/stijnhantson/Documents/projects/VIIRS_ros/final_dataset_V5.txt",row.names = F, sep="\t")
 
 ##### extract number and size statistics from frap   ################
 writeOGR(frap, "/Users/stijnhantson/Documents/projects/VIIRS_ros/", layer= "frap_subset", driver="ESRI Shapefile", overwrite_layer = T)
