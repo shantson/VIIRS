@@ -134,12 +134,136 @@ hist.a =hist(dr$sqkm,breaks =c(0,10,25,50,100,250,1000,2000),plot=F)
 fr = barplot(hist.a$counts, beside=TRUE,xlab=expression('Fire size (km'^2*')'),ylab="Number of fires",cex.lab=1.4,cex.axis = 1.3)
 axis(1,at=c(0.1,1.3,2.5,3.7,4.9,6.1,7.3,8.5),labels=c(0,10,25,50,100,250,1000,2000),cex.axis = 1.3)
 
-pdf(file="/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/Sx_pdf_firesize.pdf",width=7,height=6)
-fr = barplot(hist.a$counts, beside=TRUE,xlab=expression('Fire size (km'^2*')'),ylab="Number of fires",cex.lab=1.4,cex.axis = 1.3)
+pdf(file="/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/all_firesize.pdf",width=7,height=6)
+fr = barplot(hist.a$counts, beside=TRUE,xlab=expression('Fire size (km'^2*')'),ylab="Number of fires",ylim=c(0,50),cex.lab=1.4,cex.axis = 1.3)
+axis(1,at=c(0.1,1.3,2.5,3.7,4.9,6.1,7.3,8.5),labels=c(0,10,25,50,100,250,1000,2000),cex.axis = 1.3)
+dev.off()
+
+hist.a =hist(dr_h$sqkm,breaks =c(0,10,25,50,100,250,1000,2000),plot=F)
+
+pdf(file="/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/human_firesize.pdf",width=7,height=6)
+fr = barplot(hist.a$counts, beside=TRUE,xlab=expression('Fire size (km'^2*')'),ylab="Number of fires",ylim=c(0,50),cex.lab=1.4,cex.axis = 1.3)
+axis(1,at=c(0.1,1.3,2.5,3.7,4.9,6.1,7.3,8.5),labels=c(0,10,25,50,100,250,1000,2000),cex.axis = 1.3)
+dev.off()
+
+hist.a =hist(dr_l$sqkm,breaks =c(0,10,25,50,100,250,1000,2000),plot=F)
+
+pdf(file="/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/lightning_firesize.pdf",width=7,height=6)
+fr = barplot(hist.a$counts, beside=TRUE,xlab=expression('Fire size (km'^2*')'),ylab="Number of fires", ylim=c(0,50),cex.lab=1.4,cex.axis = 1.3)
 axis(1,at=c(0.1,1.3,2.5,3.7,4.9,6.1,7.3,8.5),labels=c(0,10,25,50,100,250,1000,2000),cex.axis = 1.3)
 dev.off()
 
 ```
+
+
+
+```{r}
+library(raster)
+
+dr1 =shapefile("/Users/stijnhantson/Documents/data/FRAP/fire18_1.shp")
+dr1$YEAR_=as.numeric(as.character(dr1$YEAR_))
+dr1$Shape_Area=as.numeric(as.character(dr1$Shape_Area))
+dr1$ALARM_DATE = as.Date(dr1$ALARM_DATE )
+dr1=dr1[!is.na(dr1$YEAR_), ]
+dr1=dr1[dr1$YEAR_>2011,]
+
+
+dr2=dr1[dr1$YEAR_ == 2013,]
+plot(table(dr2$ALARM_DATE), xlim=c(as.Date("2013/01/01"),as.Date("2013/12/31")))
+table(factor(dr2$ALARM_DATE, levels = as.Date("2013/01/01"):as.Date("2013/12/31")))
+
+```
+
+########### human lightning unknown ratio through time ###################
+```{r}
+
+
+library(raster)
+library(rgdal)
+library(rgeos)
+library(sf)
+frap=readOGR("/Users/stijnhantson/Documents/data/FRAP/fire19_1.shp")
+
+shape = shapefile("/Users/stijnhantson/Documents/data/veg_california/ca_eco_l3/ca_eco_l3.shp")
+shape = spTransform(shape,crs(frap))
+
+
+frap = st_make_valid(st_read("/Users/stijnhantson/Documents/data/FRAP/fire19_1.shp"))
+types <- vapply(sf::st_geometry(frap), function(x) {
+  class(x)[2]
+}, "")
+polys <- frap[ grepl("*POLYGON", types), ]
+
+frap=sf:::as_Spatial(polys)
+frap=gBuffer(frap, byid=T,  width=0.0)
+eco_inter=intersect(frap,shape)
+
+frap$YEAR_ =as.numeric(as.character(frap$YEAR_))
+
+# frap2012 = subset(frap,YEAR_ >2011)
+#  frap2012 = subset(frap2012,GIS_ACRES >50000)
+#length(frap2012)
+# frap2012$FIRE_NAME
+north = eco_inter[eco_inter$NA_L1CODE== 6 | eco_inter$NA_L1CODE == 7, ]
+south= eco_inter[eco_inter$NA_L1CODE== 11, ]
+
+frap=north
+frap$GIS_ACRES = frap$GIS_ACRES*0.00404685642
+frap_h = subset(frap, CAUSE != 14 & CAUSE != 1)
+frap_l = subset(frap, CAUSE == 1)
+frap_u = subset(frap, CAUSE == 14 )
+
+hum=0
+lig=0
+unk=0
+pr=0
+for (pa in 1980:2019){
+  pr=pr+1
+  frap_h1 = subset(frap_h,YEAR_ == pa)
+  frap_l1 = subset(frap_l,YEAR_ == pa)
+  frap_u1 = subset(frap_u,YEAR_ == pa)
+  
+  hum[pr] = sum(frap_h1$GIS_ACRES,na.rm=T)
+  lig[pr] =  sum(frap_l1$GIS_ACRES,na.rm=T)
+  unk[pr] = sum(frap_u1$GIS_ACRES,na.rm=T)
+  
+}
+
+hum5=0
+lig5=0
+unk5=0
+end1=0
+k=1
+for (k in 1:8){
+  st = k*5-4
+  end1 = k*5
+  hum5[k] = sum(hum[st:end1])
+  lig5[k] = sum(lig[st:end1])  
+  unk5[k] = sum(unk[st:end1])
+}
+
+unk5[8] = unk5[8]*1.2
+hum5[8] = hum5[8]*1.2
+lig5[8] = lig5[8]*1.2
+
+tr <- plot(lig5, type = "o", col="orange",ylim=c(0,6000), ylab="Burnt area (km2/yr)", xaxt='n', xlab="Years")
+lines(hum5, type = "o",col = "red")
+lines(unk5, type = "o",col = "lightgrey")
+axis(1, at=c(1,2,3,4,5,6,7,8),labels=c("80-84","85-89","90-94","95-99","00-04","05-09","10-14","15-19"))
+legend(x="topleft", legend=c("human","lightning","unknown"),col=c("red","orange","lightgrey"),lty = 1,cex=1.2,pch=1,bty = "n")
+
+
+plot(c(1980:2019),hum,ylim=c(0,1000000),type="l")
+lines(c(1980:2019),lig,col="green")
+lines(c(1980:2019),unk,col="red")
+
+hum_frac=(lig)/(hum+lig+unk)
+plot(hum_frac)
+
+
+```
+
+
 
 
 1) frap 
@@ -148,7 +272,9 @@ dev.off()
 - prepare final dataset to open
 ```{r}
 
-daily_res=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/final_dataset_V3.txt",header=T)
+library(raster)
+#library(rgdal)
+daily_res=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/final_dataset_V5.txt",header=T)
 
 res=as.data.frame(daily_res)
 
@@ -180,6 +306,17 @@ res$biomass =as.numeric(as.character(res$biomass))
 res$year =as.numeric(as.character(res$year))
 res$month =as.numeric(as.character(res$month))
 res$doy_out =as.numeric(as.character(res$doy_out))
+
+res$mean_dnbr =as.numeric(as.character(res$mean_dnbr))
+res$mean_rdnbr =as.numeric(as.character(res$mean_rdnbr))
+res$mean_bas =as.numeric(as.character(res$mean_bas))
+res$median_dnbr =as.numeric(as.character(res$median_dnbr))
+res$median_rdnbr =as.numeric(as.character(res$median_rdnbr))
+res$median_bas =as.numeric(as.character(res$median_bas))
+res$q95_dnbr =as.numeric(as.character(res$q95_dnbr))
+res$q95_rdnbr =as.numeric(as.character(res$q95_rdnbr))
+res$q95_bas =as.numeric(as.character(res$q95_bas))
+
 
 res = res[-1,]
 res$per_ba = res$growth/res$total_area
@@ -256,8 +393,8 @@ plot(len_d,day75, xlab="fire duration FRAP (days)", ylab="fire duration VIIRS (d
 plot(res$ros_km,res$ros_mean_km, xlab="maximum fire-spread-rate (km/day",ylab="mean fire-spread-rate (km/day)")
 
 
-pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/mean_vs_max_ros_v1.pdf", width = 5, height = 5)
-plot(res$ros_km,res$ros_mean_km, xlim=c(0,25),ylim=c(0,10), xlab="maximum fire rate-of-spread (km/day)",ylab="mean fire rate-of-spread (km/day)", cex.lab=1.3,cex.axis = 1.25)
+pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/mean_vs_max_ros_v1.pdf", width = 7, height = 7)
+plot(res$ros_km,res$ros_mean_km, xlim=c(0,25),ylim=c(0,10), xlab="fire rate-of-spread (km/day)",ylab="mean fire rate-of-spread (km/day)", cex.lab=1.3,cex.axis = 1.25)
 dev.off()
 
 ```
@@ -297,27 +434,33 @@ boxplot(pro1$growth_km,pro2$growth_km,pro3$growth_km,pro4$growth_km,pro5$growth_
 
 boxplot(pro1h$growth_km,pro2h$growth_km,pro3h$growth_km,pro4h$growth_km,pro5h$growth_km,names=c("day1","day2","day3","day4","day5"),xlab="",ylab="fire size (km2)",ylim=c(0,250), cex.lab=1.4,cex.axis = 1.3)
 
-pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/figure1_v1.pdf", width = 10, height = 5)
+pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/figure1_v2.pdf", width = 10, height = 5)
 par(mfrow=c(1,2))
 par(mar=c(4, 4, 1,0.1))
 par(mgp=c(2.3,1,0))
-boxplot(pro1$growth_km,pro2$growth_km,pro3$growth_km,pro4$growth_km,pro5$growth_km,names=c("1","2","3","4","5"),xlab="Day since fire start",ylab= expression('Fire size (km'^-1*')'),ylim=c(0,200), cex.lab=1.4,cex.axis = 1.3)
+boxplot(pro1$growth_km,pro2$growth_km,pro3$growth_km,pro4$growth_km,pro5$growth_km,names=c("1","2","3","4","5"),xlab="Day since fire start",ylab= expression('Fire size (km'^2*')'),ylim=c(0,200), cex.lab=1.4,cex.axis = 1.3)
+text(0.3,195,"a)",pos=4, cex=1.4)
 boxplot(pro1h$growth_km,pro2h$growth_km,pro3h$growth_km,pro4h$growth_km,pro5h$growth_km,names=c("1","2","3","4","5"),xlab="Day since fire start",ylab= "",ylim=c(0,200), cex.lab=1.4,cex.axis = 1.3)
+text(0.3,195,"b)",pos=4, cex=1.4)
 dev.off()
 
-pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/sup_figure1_v1.pdf", width = 10, height = 5)
+pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/sup_figure1_v2.pdf", width = 10, height = 5)
 par(mfrow=c(1,2))
 par(mar=c(4, 4, 1,0.1))
 par(mgp=c(2.3,1,0))
-boxplot(pro1$growth_km,pro2$growth_km,pro3$growth_km,pro4$growth_km,pro5$growth_km,names=c("1","2","3","4","5"),xlab="Day since fire start",ylab= expression('Fire size (km'^-1*')'),ylim=c(0,700), cex.lab=1.4,cex.axis = 1.3)
+boxplot(pro1$growth_km,pro2$growth_km,pro3$growth_km,pro4$growth_km,pro5$growth_km,names=c("1","2","3","4","5"),xlab="Day since fire start",ylab= expression('Fire size (km'^2*')'),ylim=c(0,700), cex.lab=1.4,cex.axis = 1.3)
+text(0.3,690,"a)",pos=4, cex=1.4)
 boxplot(pro1h$growth_km,pro2h$growth_km,pro3h$growth_km,pro4h$growth_km,pro5h$growth_km,names=c("1","2","3","4","5"),xlab="Day since fire start",ylab= "",ylim=c(0,700), cex.lab=1.4,cex.axis = 1.3)
+text(0.3,690,"b)",pos=4, cex=1.4)
 dev.off() 
 
-pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/sup_fig4/all.pdf", width = 4, height = 5)
+pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/sup_fig4/all_v3.pdf", width = 4, height = 5)
 par(mgp=c(2.3,1,0))  
-plot(me,type="o", ylim=c(0,150),ylab=expression("fire size (km"^2*")"),xlab="", xaxt='n', lty = 1, lwd = 2,cex.lab=1.2)
-axis(side=1, at=c(1:5),labels=days1)
+plot(me,type="o", ylim=c(0,150),ylab=expression("fire size (km"^2*")"),xlab="", xaxt='n',cex.axis=1.4, lty = 1, lwd = 2)
+axis(side=1, at=c(1:5),labels=days1,cex.axis=1.4)
 points(me1,type="o",lty = 2, lwd = 2)
+legend(x="topleft", legend=c("human","lightning"),col="black",lty = c(1,2),pch=1,bty = "n",lwd = 2,cex=1.5, pt.cex = 1)
+
 dev.off() 
 
 t.test(log(pro1$growth_km),log(pro1h$growth_km))
@@ -367,10 +510,10 @@ plot(me,type="o", ylim=c(0,150),ylab=expression("fire size (km"^2*")"),xlab="", 
 axis(side=1, at=c(1:5),labels=days)
 points(me1,type="o",lty = 2, lwd = 2)
 
-pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/sup_fig4/north.pdf", width = 4, height = 5)
+pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/sup_fig4/north_v2.pdf", width = 4, height = 5)
 par(mgp=c(2.3,1,0))  
-plot(me,type="o", ylim=c(0,150),ylab=expression("fire size (km"^2*")"),xlab="", xaxt='n', lty = 1, lwd = 2,cex.lab=1.2)
-axis(side=1, at=c(1:5),labels=days1)
+plot(me,type="o", ylim=c(0,150),ylab=expression("fire size (km"^2*")"),xlab="", xaxt='n', lty = 1, lwd = 2,cex.lab=1.2,cex.axis=1.4)
+axis(side=1, at=c(1:5),labels=days1,cex.axis=1.4)
 points(me1,type="o",lty = 2, lwd = 2)
 dev.off() 
 
@@ -423,10 +566,10 @@ plot(me,type="o", ylim=c(0,150),ylab=expression("fire size (km"^2*")"),xlab="", 
 axis(side=1, at=c(1:5),labels=days)
 points(me1,type="o",lty = 2, lwd = 2)
 
-pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/sup_fig4/med.pdf", width = 4, height = 5)
+pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/sup_fig4/med_v2.pdf", width = 4, height = 5)
 par(mgp=c(2.3,1,0))  
-plot(me,type="o", ylim=c(0,150),ylab=expression("fire size (km"^2*")"),xlab="", xaxt='n', lty = 1, lwd = 2,cex.lab=1.2)
-axis(side=1, at=c(1:5),labels=days1)
+plot(me,type="o", ylim=c(0,150),ylab=expression("fire size (km"^2*")"),xlab="",cex.axis=1.4, xaxt='n', lty = 1, lwd = 2,cex.lab=1.2)
+axis(side=1, at=c(1:5),labels=days1,cex.axis=1.4)
 points(me1,type="o",lty = 2, lwd = 2)
 dev.off() 
 
@@ -468,10 +611,10 @@ plot(me,type="o", ylim=c(0,150),ylab=expression("fire size (km"^2*")"),xlab="", 
 axis(side=1, at=c(1:5),labels=days)
 points(me1,type="o",lty = 2, lwd = 2)
 
-pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/sup_fig4/autumn.pdf", width = 4, height = 5)
+pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/sup_fig4/autumn_v2.pdf", width = 4, height = 5)
 par(mgp=c(2.3,1,0))  
-plot(me,type="o", ylim=c(0,250),ylab=expression("fire size (km"^2*")"),xlab="", xaxt='n', lty = 1, lwd = 2,cex.lab=1.2)
-axis(side=1, at=c(1:5),labels=days1)
+plot(me,type="o", ylim=c(0,250),ylab=expression("fire size (km"^2*")"),xlab="", xaxt='n',cex.axis=1.4, lty = 1, lwd = 2,cex.lab=1.2)
+axis(side=1, at=c(1:5),labels=days1,cex.axis=1.4)
 points(me1,type="o",lty = 2, lwd = 2)
 dev.off() 
 
@@ -515,10 +658,10 @@ plot(me,type="o", ylim=c(0,150),ylab=expression("fire size (km"^2*")"),xlab="", 
 axis(side=1, at=c(1:5),labels=days)
 points(me1,type="o",lty = 2, lwd = 2)
 
-pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/sup_fig4/summer.pdf", width = 4, height = 5)
+pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/sup_fig4/summer_v2.pdf", width = 4, height = 5)
 par(mgp=c(2.3,1,0))  
-plot(me,type="o", ylim=c(0,150),ylab=expression("fire size (km"^2*")"),xlab="", xaxt='n', lty = 1, lwd = 2,cex.lab=1.2)
-axis(side=1, at=c(1:5),labels=days1)
+plot(me,type="o", ylim=c(0,150),ylab=expression("fire size (km"^2*")"),xlab="", xaxt='n',cex.axis=1.4, lty = 1, lwd = 2,cex.lab=1.2)
+axis(side=1, at=c(1:5),labels=days1,cex.axis=1.4)
 points(me1,type="o",lty = 2, lwd = 2)
 dev.off() 
 
@@ -566,10 +709,10 @@ plot(me,type="o", ylim=c(0,150),ylab=expression("fire size (km"^2*")"),xlab="", 
 axis(side=1, at=c(1:5),labels=days)
 points(me1,type="o",lty = 2, lwd = 2)
 
-pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/sup_fig4/north_summer.pdf", width = 4, height = 5)
+pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/sup_fig4/north_summer_v2.pdf", width = 4, height = 5)
 par(mgp=c(2.3,1,0))  
-plot(me,type="o", ylim=c(0,150),ylab=expression("fire size (km"^2*")"),xlab="", xaxt='n', lty = 1, lwd = 2,cex.lab=1.2)
-axis(side=1, at=c(1:5),labels=days1)
+plot(me,type="o", ylim=c(0,150),ylab=expression("fire size (km"^2*")"),xlab="",cex.axis=1.4, xaxt='n', lty = 1, lwd = 2,cex.lab=1.2)
+axis(side=1, at=c(1:5),labels=days1,cex.axis=1.4)
 points(me1,type="o",lty = 2, lwd = 2)
 dev.off() 
 
@@ -611,10 +754,10 @@ plot(me,type="o", ylim=c(0,150),ylab=expression("fire size (km"^2*")"),xlab="", 
 axis(side=1, at=c(1:5),labels=days)
 points(me1,type="o",lty = 2, lwd = 2)
 
-pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/sup_fig4/north_autumn.pdf", width = 4, height = 5)
+pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/sup_fig4/north_autumn_v2.pdf", width = 4, height = 5)
 par(mgp=c(2.3,1,0))  
-plot(me,type="o", ylim=c(0,250),ylab=expression("fire size (km"^2*")"),xlab="", xaxt='n', lty = 1, lwd = 2,cex.lab=1.2)
-axis(side=1, at=c(1:5),labels=days1)
+plot(me,type="o", ylim=c(0,250),ylab=expression("fire size (km"^2*")"),xlab="", xaxt='n',cex.axis=1.4, lty = 1, lwd = 2,cex.lab=1.2)
+axis(side=1, at=c(1:5),labels=days1,cex.axis=1.4)
 points(me1,type="o",lty = 2, lwd = 2)
 dev.off() 
 
@@ -662,10 +805,10 @@ plot(me,type="o", ylim=c(0,150),ylab=expression("fire size (km"^2*")"),xlab="", 
 axis(side=1, at=c(1:5),labels=days)
 points(me1,type="o",lty = 2, lwd = 2)
 
-pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/sup_fig4/med_summer.pdf", width = 4, height = 5)
+pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/sup_fig4/med_summer_v2.pdf", width = 4, height = 5)
 par(mgp=c(2.3,1,0))  
-plot(me,type="o", ylim=c(0,150),ylab=expression("fire size (km"^2*")"),xlab="", xaxt='n', lty = 1, lwd = 2,cex.lab=1.2)
-axis(side=1, at=c(1:5),labels=days1)
+plot(me,type="o", ylim=c(0,150),ylab=expression("fire size (km"^2*")"),xlab="", xaxt='n',cex.axis=1.4, lty = 1, lwd = 2,cex.lab=1.2)
+axis(side=1, at=c(1:5),labels=days1,cex.axis=1.4)
 points(me1,type="o",lty = 2, lwd = 2)
 dev.off() 
 
@@ -708,10 +851,10 @@ plot(me,type="o", ylim=c(0,150),ylab=expression("fire size (km"^2*")"),xlab="", 
 axis(side=1, at=c(1:5),labels=days)
 points(me1,type="o",lty = 2, lwd = 2)
 
-pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/sup_fig4/med_autumn.pdf", width = 4, height = 5)
+pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/sup_fig4/med_autumn_v2.pdf", width = 4, height = 5)
 par(mgp=c(2.3,1,0))  
-plot(me,type="o", ylim=c(0,400),ylab=expression("fire size (km"^2*")"),xlab="", xaxt='n', lty = 1, lwd = 2,cex.lab=1.2)
-axis(side=1, at=c(1:5),labels=days1)
+plot(me,type="o", ylim=c(0,400),ylab=expression("fire size (km"^2*")"),xlab="", xaxt='n', lty = 1,cex.axis=1.4, lwd = 2,cex.lab=1.2)
+axis(side=1, at=c(1:5),labels=days1,cex.axis=1.4)
 points(me1,type="o",lty = 2, lwd = 2)
 dev.off() 
 
@@ -868,13 +1011,17 @@ res=res[res$ros_km>0,]
 res_f = res[res$max_land == 1,]
 res_p = res[res$max_land != 1,]
 
+summary(lm(log(res$mean_frp)~log(res$ros_km)))
+
 #just show the plot here
 plot(res_f$mean_frp~res_f$ros_km,log="xy",xlim=c(0.005,30),ylim=c(0.1,180),xaxt="n",ylab="mean FRP (MW)",xlab="Rate-of-Spread (km/day)", cex.lab=1.4,cex.axis = 1.3,col="darkgreen")
 
 marks=c(0.01,0.1,1,10)
 marks1=c(0.1,0.5,5,50)
+
+
 pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_FRP_ros_v3.pdf", width = 5, height = 5)
-plot(res_f$mean_frp~res_f$ros_km,log="xy",xlim=c(0.005,30),ylim=c(0.1,180),xaxt="n",yaxt="n",ylab="mean FRP (MW)",xlab="Rate-of-Spread (km/day)", cex.lab=1.4,cex.axis = 1.3,col="darkgreen")
+plot(res_f$mean_frp~res_f$ros_km,log="xy",xlim=c(0.005,30),ylim=c(0.1,180),xaxt="n",yaxt="n",ylab="mean FRP (MW)",xlab=expression('Rate-of-Spread (km d'^-1*')'), cex.lab=1.4,cex.axis = 1.3,col="darkgreen")
 points(res_p$mean_frp~res_p$ros_km,col="orange")
 axis(1,at=marks,labels=marks,cex.axis=1.4 )
 axis(2,at=marks1,labels=marks1,cex.axis=1.4 )
@@ -884,6 +1031,217 @@ dev.off()
 
 
 ```
+
+######## FRP vs tree mortality
+```{r}
+summary(res)
+res=res[res$ros_km>0,]
+
+data_test1 = res[res$human == 1 & res$max_land <1.5,]
+data_test2 = res1[res$human == 2 & res$max_land <1.5,]
+
+summary(lm(log(res$mean_frp)~res$mean_bas))
+
+#just show the plot here
+plot(res$mean_bas~res$mean_frp,log="x",ylim=c(0,100),xlim=c(0.1,200),ylab="mean tree mortality",xlab="mean FRP (MW)", cex.lab=1.4,cex.axis = 1.3,col="darkgreen")
+
+marks=c(0.1,1,10,100)
+marks1=c(0,25,50,75,100)
+
+
+pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_FRP_mortality_v1.pdf", width = 5, height = 5)
+plot(res$mean_bas~res$mean_frp,log="x",ylim=c(0,100),xlim=c(0.1,200),xaxt="n",yaxt="n",ylab="Tree mortality (%)",xlab="mean FRP (MW)", cex.lab=1.4,cex.axis = 1.3,col="darkgreen")
+axis(1,at=marks,labels=marks,cex.axis=1.4 )
+axis(2,at=marks1,labels=marks1,cex.axis=1.4 )
+dev.off()
+
+```
+
+
+
+
+```{r}
+data_s=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_dNBR_V6.txt",row.names=NULL)
+rownames(data_s) <- c()
+
+data_s1 = as.data.frame(data_s[,2:19])
+
+
+names(data_s1) = c("lon","lat","fire","nr_day","max_land","mean_land","elevation","biomass","mean_ros","ros95","mean_dnbr","dnbr95","mean_rdnbr","rdnbr95","mean_BA_red","BA_red95","cause","size")
+length(data_s1$lon)
+data_s1$mean_ros =as.numeric(as.character(data_s1$mean_ros))
+data_s1$ros95 =as.numeric(as.character(data_s1$ros95))
+data_s1$mean_dnbr =as.numeric(as.character(data_s1$mean_dnbr))
+data_s1$dnbr95 =as.numeric(as.character(data_s1$dnbr95))
+data_s1$mean_rdnbr =as.numeric(as.character(data_s1$mean_rdnbr))
+data_s1$rdnbr95 =as.numeric(as.character(data_s1$rdnbr95))
+data_s1$lon =as.numeric(as.character(data_s1$lon))
+data_s1$lat =as.numeric(as.character(data_s1$lat))
+
+data_s1$mean_land[is.na(data_s1$mean_land)]=data_s1$max_land[is.na(data_s1$mean_land)] #mean landcover gives NA when only one landcover is present
+data_s1$mean_land =as.numeric(as.character(data_s1$mean_land))
+data_s1$mean_BA_red =as.numeric(as.character(data_s1$mean_BA_red))
+data_s1$BA_red95 =as.numeric(as.character(data_s1$BA_red95))
+data_s1$biomass =as.numeric(as.character(data_s1$biomass))
+data_s1$elevation =as.numeric(as.character(data_s1$elevation))
+data_s1$cause =as.numeric(as.character(data_s1$cause))
+data_s1$size =as.numeric(as.character(data_s1$size))
+
+
+data_s1=na.omit(data_s1)
+
+shape = shapefile("/Users/stijnhantson/Documents/data/veg_california/ca_eco_l3/ca_eco_l3.shp")
+pts <- SpatialPoints(data_s1[,c("lon","lat")],P4S.latlon)
+shape = spTransform(shape,P4S.latlon)
+eco = over(pts, shape)
+data_s1$L1CODE = eco$NA_L1CODE
+data_s1$L3name = eco$US_L3NAME
+data_s1$L1CODE =as.numeric(as.character(data_s1$L1CODE))
+
+#data_s1$log_ros = log10(data_s1$mean_ros)
+#data_s1$log_ros95 = log10(data_s1$ros95)
+#data_s1 = data_s1[data_s1$mean_ros >0,]
+data_s1$human[data_s1$cause !=1 & data_s1$cause !=14 & data_s1$cause !=17]=1
+data_s1$human[data_s1$cause ==1 ]=2
+
+data_s1$ros_km = (data_s1$ros95 *24)/1000
+data_test = data_s1[data_s1$max_land == 1,]
+data_test1 = data_s1[data_s1$L1CODE == 6 |data_s1$L1CODE == 7 ,]
+data_test2 = data_s1[data_s1$L1CODE == 11,]
+
+data_test1 = data_s1[data_s1$human == 1 & (data_s1$L1CODE == 6 |data_s1$L1CODE == 7),]
+data_test2 = data_s1[data_s1$human == 2 & (data_s1$L1CODE == 6 |data_s1$L1CODE == 7),]
+
+data_test1 = data_s1[data_s1$human == 1 ,]
+data_test2 = data_s1[data_s1$human == 2 ,]
+
+data_test1=na.omit(data_test1)
+data_test2=na.omit(data_test2)
+
+
+
+plot(data_s1$ros_km, data_s1$mean_BA_red,log="x",xlab=expression('Rate-of-Spread (km d'^-1*')'),ylab="Tree mortality (%)",xlim=c(0.005,30),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, col="black")
+#axis(1,at=marks,labels=marks,cex.axis=1.4 )
+points(data_test2$ros_km, data_test2$mean_BA_red,cex=0.8, col="darkgrey")
+points(data_test1$ros_km, data_test1$mean_BA_red,cex=0.8, col="orange")
+
+
+marks=c(0.01,0.1,1,10)
+tiff("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_basa_ros_all_v3.tif", width = 5, height = 5, units = 'in', res = 300)
+plot(data_s1$ros_km, data_s1$mean_BA_red,log="x",xlab=expression('Rate-of-Spread (km d'^-1*')'),ylab="Tree mortality (%)",xlim=c(0.005,30),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, col="black")
+axis(1,at=marks,labels=marks,cex.axis=1.4 )
+points(data_test2$ros_km, data_test2$mean_BA_red,cex=0.8, col="darkgrey")
+points(data_test1$ros_km, data_test1$mean_BA_red,cex=0.8, col="orange")
+lines(lowess(data_s1$ros_km, data_s1$mean_BA_red, f=0.41),col="black", lwd=3)
+lines(lowess(data_test1$ros_km, data_test1$mean_BA_red, f=0.41),col="darkgoldenrod3", lwd=3)
+lines(lowess(data_test2$ros_km, data_test2$mean_BA_red, f=0.41),col="gray40", lwd=3)
+legend("topleft",legend=c("all","human","lightning"),col = c("black","darkgoldenrod3", "gray40"),lty=1, bty="n",lwd = 3, cex=1)
+dev.off()
+
+
+
+data_test1 = data_s1[data_s1$human == 1 & data_s1$max_land <1.5 & data_s1$ros_km>0 ,]
+data_test2 = data_s1[data_s1$human == 2 & data_s1$max_land <1.5 & data_s1$ros_km>0,]
+data_forest = data_s1[data_s1$max_land <1.5 & data_s1$ros_km>0,]
+
+data_test1=na.omit(data_test1)
+data_test2=na.omit(data_test2)
+data_forest=na.omit(data_forest)
+
+summary(lm(data_forest$mean_BA_red~(log10(data_forest$ros_km)+I((log10(data_forest$ros_km))^2))))
+summary(log10(data_forest$ros_km))
+data_s2 = data_s1[data_s1$ros_km <10,]
+data_forest_10 = data_s2[data_s2$max_land <1.5,]
+data_test1_10 = data_s2[data_s2$human == 1 & data_s2$max_land <1.5,]
+data_test2_10 = data_s2[data_s2$human == 2 & data_s2$max_land <1.5,]
+data_test1_10=na.omit(data_test1_10)
+data_test2_10=na.omit(data_test2_10)
+
+marks=c(0.01,0.1,1,10)
+pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_basa_ros_forest_v7.pdf", width = 5, height = 5)
+plot(data_forest$ros_km, data_forest$mean_BA_red,log="x",xlab=expression('Rate-of-Spread (km d'^-1*')'),ylab="Tree mortality (%)",xlim=c(0.005,30),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, col="black")
+axis(1,at=marks,labels=marks,cex.axis=1.4 )
+points(data_test2$ros_km, data_test2$mean_BA_red,cex=0.8, col="darkgrey")
+points(data_test1$ros_km, data_test1$mean_BA_red,cex=0.8, col="orange")
+lines(lowess(data_forest_10$ros_km, data_forest_10$mean_BA_red, f=0.41),col="black", lwd=3)
+lines(lowess(data_test1_10$ros_km, data_test1_10$mean_BA_red, f=0.41),col="darkgoldenrod3", lwd=3)
+lines(lowess(data_test2_10$ros_km, data_test2_10$mean_BA_red, f=0.41),col="gray40", lwd=3)
+legend("topleft",legend=c("all","human","lightning"),col = c("black","darkgoldenrod3", "gray40"),lty=1, bty="n",lwd = 3, cex=1)
+dev.off()
+
+marks=c(0.01,0.1,1,10)
+pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_basa_ros_forest_v5.pdf", width = 5, height = 5)
+plot(data_forest$ros_km, data_forest$mean_BA_red,log="x",xlab=expression('Rate-of-Spread (km d'^-1*')'),ylab="Tree mortality (%)",xlim=c(0.005,30),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, col="black")
+axis(1,at=marks,labels=marks,cex.axis=1.4 )
+points(data_test2$ros_km, data_test2$mean_BA_red,cex=0.8, col="darkgrey")
+points(data_test1$ros_km, data_test1$mean_BA_red,cex=0.8, col="orange")
+lines(lowess(data_forest_10$ros_km, data_forest_10$mean_BA_red, f=0.41),col="black", lwd=3)
+lines(lowess(data_test1_10$ros_km, data_test1_10$mean_BA_red, f=0.41),col="darkgoldenrod3", lwd=3)
+lines(lowess(data_test2_10$ros_km, data_test2_10$mean_BA_red, f=0.41),col="gray40", lwd=3)
+legend("topleft",legend=c("all","human","lightning"),col = c("black","darkgoldenrod3", "gray40"),lty=1, bty="n",lwd = 3, cex=1)
+dev.off()
+
+marks=c(0.01,0.1,1,10)
+tiff("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_basa_ros_forest_v6.tif", width = 5, height = 5, units = 'in', res = 300)
+plot(data_forest$ros_km, data_forest$mean_BA_red,log="x",xlab=expression('Rate-of-Spread (km d'^-1*')'),ylab="Tree mortality (%)",xlim=c(0.1,15),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, col="black")
+axis(1,at=marks,labels=marks,cex.axis=1.4 )
+points(data_test2$ros_km, data_test2$mean_BA_red,cex=0.8, col="darkgrey")
+points(data_test1$ros_km, data_test1$mean_BA_red,cex=0.8, col="orange")
+lines(lowess(data_forest_10$ros_km, data_forest_10$mean_BA_red, f=0.41),col="black", lwd=3)
+lines(lowess(data_test1_10$ros_km, data_test1_10$mean_BA_red, f=0.41),col="darkgoldenrod3", lwd=3)
+lines(lowess(data_test2_10$ros_km, data_test2_10$mean_BA_red, f=0.41),col="gray40", lwd=3)
+legend("topleft",legend=c("all","human","lightning"),col = c("black","darkgoldenrod3", "gray40"),lty=1, bty="n",lwd = 3, cex=1)
+dev.off()
+
+
+plot(data_forest$ros_km, data_forest$mean_BA_red,log="x",xlab=expression('Rate-of-Spread (km d'^-1*')'),ylab="Tree mortality (%)",xlim=c(0.1,15),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, col="black")
+axis(1,at=marks,labels=marks,cex.axis=1.4 )
+points(data_test2$ros_km, data_test2$mean_BA_red,cex=0.8, col="darkgrey")
+points(data_test1$ros_km, data_test1$mean_BA_red,cex=0.8, col="orange")
+lines(lowess(data_forest_10$ros_km, data_forest_10$mean_BA_red, f=0.41),col="black", lwd=3)
+lines(lowess(data_test1_10$ros_km, data_test1_10$mean_BA_red, f=0.41),col="darkgoldenrod3", lwd=3)
+lines(lowess(data_test2_10$ros_km, data_test2_10$mean_BA_red, f=0.41),col="gray40", lwd=3)
+legend("topleft",legend=c("all","human","lightning"),col = c("black","darkgoldenrod3", "gray40"),lty=1, bty="n",lwd = 3, cex=1)
+
+data_test = data_s1[data_s1$max_land == 1,]
+
+marks=c(0.01,0.1,1,10)
+pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_dNBR_ros_all_v2.pdf", width = 5, height = 5)
+plot(data_s1$ros_km, data_s1$mean_dnbr,log="x",xlab=expression('Rate-of-Spread (km d'^-1*')'),ylab="dNBR",xlim=c(0.005,30),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, ylim=c(0,600))
+axis(1,at=marks,labels=marks,cex.axis=1.4 )
+#lines(lowess(data_test$ros95, data_test$mean_BA_red, f=0.41),col="black", lwd=3)
+dev.off()
+
+marks=c(0.01,0.1,1,10)
+pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_rdNBR_ros_all_v2.pdf", width = 5, height = 5)
+plot(data_s1$ros_km, data_s1$mean_rdnbr,log="x",xlab=expression('Rate-of-Spread (km d'^-1*')'),ylab="rdNBR",xlim=c(0.005,30),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, ylim=c(0,600))
+axis(1,at=marks,labels=marks,cex.axis=1.4 )
+#lines(lowess(data_test$ros95, data_test$mean_BA_red, f=0.41),col="black", lwd=3)
+dev.off()
+
+test=data_s1[data_s1$ros_km>0,]
+summary(lm(log10(test$ros_km)~ test$mean_rdnbr+I(test$mean_rdnbr^2)))
+summary(lm(log10(test$ros_km)~ test$mean_dnbr))
+
+
+marks=c(0.01,0.1,1,10)
+pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_dNBR_ros_north_v2.pdf", width = 5, height = 5)
+plot(data_test1$ros_km, data_test1$mean_dnbr,log="x",xlab=expression('Rate-of-Spread (km d'^-1*')'),ylab="dNBR",xlim=c(0.005,30),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, ylim=c(0,600))
+axis(1,at=marks,labels=marks,cex.axis=1.4 )
+#lines(lowess(data_test$ros95, data_test$mean_BA_red, f=0.41),col="black", lwd=3)
+dev.off()
+
+marks=c(0.01,0.1,1,10)
+pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_dNBR_ros_south_v2.pdf", width = 5, height = 5)
+plot(data_test2$ros_km, data_test2$mean_dnbr,log="x",xlab=expression('Rate-of-Spread (km d'^-1*')'),ylab="dNBR",xlim=c(0.005,30),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, ylim=c(0,600))
+axis(1,at=marks,labels=marks,cex.axis=1.4 )
+#lines(lowess(data_test$ros95, data_test$mean_BA_red, f=0.41),col="black", lwd=3)
+dev.off()
+
+
+
+```
+
 
 
 ########  difference in fire size for first 5 days across california and both ecosystems 
@@ -1088,7 +1446,7 @@ axis(1,at=c(0.5,3.5,6.5,9.5,12.5,15.5,18.5,21.5,24.5,27.5),labels=hist.a$breaks,
 legend("topright",legend = c("human","lightning"), fill=c("grey","black"),cex=1.4,bty = "n")
 
 pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/figure2_freq_v1.pdf", width = 6, height = 5)
-fr = barplot(dens, beside=TRUE,xlab=expression('Rate-of-Spread (km d'^-1*')'),ylab="% fire days",ylim=c(0,60),cex.lab=1.4,cex.axis = 1.3)
+fr = barplot(dens, beside=TRUE,xlab=expression('Rate-of-Spread (km d'^-1*')'),ylab="Fire days (%)",ylim=c(0,60),cex.lab=1.4,cex.axis = 1.3)
 axis(1,at=c(0.5,3.5,6.5,9.5,12.5,15.5,18.5,21.5,24.5,27.5),labels=hist.a$breaks,cex.axis = 1.3)
 legend("topright",legend = c("human","lightning"), fill=c("grey","black"),cex=1.4,bty = "n")
 dev.off() 
@@ -1191,6 +1549,120 @@ dev.off()
 
 ```
 
+###burnt area by rate-of-spread
+```{r}
+
+data_test = data_s1[data_s1$max_land == 1,]
+data_test1 = data_s1[data_s1$L1CODE == 6 |data_s1$L1CODE == 7 ,]
+data_test2 = data_s1[data_s1$L1CODE == 11,]
+
+data_test1 = data_s1[data_s1$human == 1 & (data_s1$L1CODE == 6 |data_s1$L1CODE == 7),]
+data_test2 = data_s1[data_s1$human == 2 & (data_s1$L1CODE == 6 |data_s1$L1CODE == 7),]
+
+data_test1 = data_s1[data_s1$human == 1 ,]
+data_test2 = data_s1[data_s1$human == 2 ,]
+
+fast = data_test1[data_test1$ros_km > 3.64,]
+sum(fast$size,na.rm=T)/sum(data_test1$size,na.rm=T)
+sum((data_test1$size*data_test1$ros_km),na.rm=T)/sum(data_test1$size,na.rm=T)
+
+fast = data_test2[data_test2$ros_km > 2.2,]
+sum(fast$size,na.rm=T)/sum(data_test2$size,na.rm=T)
+sum((data_test2$size*data_test2$ros_km),na.rm=T)/sum(data_test2$size,na.rm=T)
+
+fast = data_s1[data_s1$ros_km > 1,]
+fast_hum = fast[fast$human == 1,]
+
+print("% BA and % of fire days fast fires > 1km/day")
+sum(fast$size)/sum(data_s1$size)
+length(fast$size)/length(data_s1$size)
+
+print("% BA  fast fires due to human ignition % of fire days human caused fast fires > 1km/day")
+sum(fast_hum$size, na.rm=T)/sum(fast$size)
+length(fast_hum$size)/length(fast$size)
+
+all_min1 = data_s1[data_s1$nr_day != 1,] # remove first fire spread day from statistics
+
+quan = quantile(data_s1$ros_km,0.9)
+fast = data_s1[data_s1$ros_km > quan,]
+slow = data_s1[data_s1$ros_km < quan,]
+fast_hum = fast[fast$human == 1,]
+
+print("fastest 10% fires cause xxx% of BA")
+sum(fast$size)/sum(all_min1$size)
+length(fast$size)/length(all_min1$size)
+print("mean tree mortality weighted by BA and just mean")
+sum((data_s1$mean_BA_red*data_s1$size))/(sum(data_s1$size))
+mean(data_s1$mean_BA_red)
+
+print("% BA due to human fires amoung fastest 10% fire days")
+sum(fast_hum$size, na.rm=T)/sum(fast$size)
+print("% fire number due to human fires amoung fastest 10% fire days")
+length(fast_hum$size)/length(fast$size)
+print("% tree mortality fast fires weighthed and not")
+sum((fast$mean_BA_red*fast$size))/(sum(fast$size))
+mean(fast$mean_BA_red)
+print("% tree mortality slow fires weighthed and not")
+sum((slow$mean_BA_red*slow$size))/(sum(slow$size))
+mean(slow$mean_BA_red)
+
+print("tree mortality <0.5km and >2km")
+fast1 = data_s1[data_s1$ros_km > 2,]
+slow1 = data_s1[data_s1$ros_km < 0.5,]
+mean(fast1$mean_BA_red,omit.na=T )
+mean(slow1$mean_BA_red,omit.na=T )
+
+# plot BA per rate of spread 
+out1 = subset(data_s1,cause == 1 )   #1=lightning; 14=unknown; 7=arson
+out2 = subset(data_s1,cause !=1 & cause != 14 )
+
+breaks =c(0,0.5,1,2,3,5,7,10,20,30)
+
+tt=0
+pp=0
+for (i in 1:9){
+
+  kr = out1[out1$ros_km >= breaks[i] & out1$ros_km < breaks[i+1],]
+  kp = out2[out2$ros_km >= breaks[i] & out2$ros_km < breaks[i+1],]
+
+tt[i]=sum(kr$size, na.rm=T)/1000000
+pp[i]= sum(kp$size, na.rm=T)/1000000
+}
+sum(tt)
+sum(pp)
+fg = rbind(tt,pp)
+
+par(mar=c(4, 5, 2,0.1))
+fr = barplot(fg, beside=TRUE,xlab="Rate-of-Spread (km/day)",ylab=expression('burnt area (km'^2*')'),ylim=c(0,2000),cex.lab=1.4,cex.axis = 1.3)
+axis(1,at=c(0.5,3.5,6.5,9.5,12.5,15.5,18.5,21.5,24.5,27.5),labels= breaks ,cex.axis = 1.3)
+legend("topright",legend = c("human","lightning"), fill=c("grey","black"),cex=1.4,bty = "n")
+
+
+tiff("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/BA_per_ros_hist.tif", width = 6, height = 5, units = 'in', res = 300)
+par(mar=c(4, 5, 2,0.1))
+fr = barplot(fg, beside=TRUE,xlab="Rate-of-Spread (km/day)",ylab=expression('burnt area (km'^2*')'),ylim=c(0,2000),cex.lab=1.4,cex.axis = 1.3)
+#axis(1,at=c(0.5,3.5,6.5,9.5,12.5,15.5,18.5,21.5,24.5,27.5),labels=hist.a$breaks,cex.axis = 1.3)
+axis(1,at=c(0.5,3.5,6.5,9.5,12.5,15.5,18.5,21.5,24.5,27.5),labels= breaks ,cex.axis = 1.3)
+legend("topright",legend = c("human","lightning"), fill=c("grey","black"),cex=1.4,bty = "n")
+dev.off() 
+
+
+fg1=rbind((tt/sum(tt))*100,(pp/sum(pp))*100)
+
+pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/BA_per_ros_hist_percentage.pdf", width = 6, height = 5)
+#par(mar=c(1, 1, 1,1))
+fr = barplot(fg1, beside=TRUE,xlab=expression('Rate-of-Spread (km d'^-1*')'),ylab= "Burned area (%)",ylim=c(0,30),cex.lab=1.4,cex.axis = 1.3)
+#axis(1,at=c(0.5,3.5,6.5,9.5,12.5,15.5,18.5,21.5,24.5,27.5),labels=hist.a$breaks,cex.axis = 1.3)
+axis(1,at=c(0.5,3.5,6.5,9.5,12.5,15.5,18.5,21.5,24.5,27.5),labels= breaks ,cex.axis = 1.3)
+legend("topright",legend = c("human","lightning"), fill=c("grey","black"),cex=1.4,bty = "n")
+dev.off() 
+
+
+
+```
+
+
+
 ################# 20 fastest fires  #############
 ```{r}
 
@@ -1260,15 +1732,30 @@ analysis
 
 out1 = res[res$cause !=1 & res$cause != 14,] 
 out2 = res[res$cause ==1,] 
+length(out1$bi)
+length(out2$bi)
 
 out1 = subset(res,(eco1 == 6 |eco1 == 7) & res$cause !=1 & res$cause != 14)   #1=lightning; 14=unknown; 7=arson
 out2 = subset(res,(eco1 == 6 |eco1 == 7) & res$cause ==1)   #1=lightning; 14=unknown; 7=arson
+length(out1$bi)
+length(out2$bi)
 
 out1 = subset(res,eco1 == 11& res$cause !=1 & res$cause != 14)
 out2 = subset(res,eco1 == 11 & res$cause ==1)
+length(out1$bi)
+length(out2$bi)
 
 out1 = subset(res,(eco1 == 6 |eco1 == 7) & res$cause !=1 & res$cause != 14 & res$mont > 5 & res$mont < 10 )   #1=lightning; 14=unknown; 7=arson
 out2 = subset(res,(eco1 == 6 |eco1 == 7) & res$cause ==1& res$mont > 5 & res$mont < 10)   #1=lightning; 14=unknown; 7=arson
+length(out1$bi)
+length(out2$bi)
+
+out1 = subset(res,(eco1 == 6 |eco1 == 7) & res$cause !=1 & res$cause != 14 & res$mont < 6 & res$mont > 9 )   #1=lightning; 14=unknown; 7=arson
+out2 = subset(res,(eco1 == 6 |eco1 == 7) & res$cause ==1& res$mont < 6 & res$mont > 9)   #1=lightning; 14=unknown; 7=arson
+
+length(out1$bi)
+length(out2$bi)
+
 
 t.test(out1$bi,out2$bi)
 t.test(out1$erc,out2$erc)
@@ -1296,285 +1783,40 @@ t.test(log10(out1$total_area),log10(out2$total_area))
 ```{r}
 
 ta = table(res$human,res$mont)
-ps = barplot(ta, beside=TRUE, ylab="number of fires",xpd=T,xlab= "month", xaxt='n',ylim=c(0,300), axis.lty=1,cex.lab = 1.4,cex.axis = 1.2 )
+pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/S9a_v1.pdf", width = 7, height = 6)
+ps = barplot(ta, beside=TRUE, ylab="Number of fires",xpd=T,xlab= "Month", xaxt='n',ylim=c(0,300), axis.lty=1,cex.lab = 1.5,cex.axis = 1.4 )
 axis(1,at=c(2,5,8,11,14,17,20,23,26,29,32,35), labels =c(1:12),xlim=c(0,36),xpd=F ,cex.lab = 1.4,cex.axis = 1.3)
-legend("topright",c("human","lightning"),fill = c("grey", "black"), bty="n",cex=1.4)
-text(1,285,"a)",cex=1.8)
+legend("topright",c("human","lightning"),fill = c("black","grey"), bty="n",cex=1.4)
+text(5,285,"a) California",cex=1.7)
+dev.off() 
+
 out1 = subset(res,eco1 == 6 |eco1 == 7)   #1=lightning; 14=unknown; 7=arson
 out2 = subset(res,eco1 == 11)
 
 ta = table(out1$human,out1$mont)
-ps = barplot(ta, beside=TRUE, ylab="number of fires",xpd=T, xaxt='n',xlab= "month", ylim=c(0,200), axis.lty=1,cex.lab = 1.4,cex.axis = 1.2 )
+
+pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/S9b_v1.pdf", width = 7, height = 6)
+ps = barplot(ta, beside=TRUE, ylab="Number of fires",xpd=T, xaxt='n',xlab= "Month", ylim=c(0,200), axis.lty=1,cex.lab = 1.5,cex.axis = 1.4 )
 axis(1,at=c(2,5,8,11,14,17,20,23,26,29,32,35), labels =c(1:12),xlim=c(0,36),xpd=F,cex.lab = 1.4,cex.axis = 1.3 )
-legend("topright",c("human","lightning"),fill = c("grey", "black"), bty="n",cex=1.4)
-text(1,190,"b)",cex=1.8)
-
-ta = table(out2$human,out2$mont)
-ps = barplot(ta, beside=TRUE, ylab="number of fires",xpd=T,xaxt='n',xlab= "month", ylim=c(0,200), axis.lty=1,cex.lab = 1.4,cex.axis = 1.2 )
-axis(1,at=c(2,5,8,11,14,17,20,23,26,29,32,35), labels =c(1:12),xlim=c(0,36),xpd=F,cex.lab = 1.4,cex.axis = 1.3 )
-legend("topright",c("human","lightning"),fill = c("grey", "black"), bty="n",cex=1.4)
-text(1,190,"c)",cex=1.8)
-```
-
-
-
-
-```{r}
-data_s=read.table("/Users/stijnhantson/Documents/projects/VIIRS_ros/daily_mean_ros_dNBR_V6.txt",row.names=NULL)
-rownames(data_s) <- c()
-
-data_s1 = as.data.frame(data_s[,2:19])
-
-
-names(data_s1) = c("lon","lat","fire","nr_day","max_land","mean_land","elevation","biomass","mean_ros","ros95","mean_dnbr","dnbr95","mean_rdnbr","rdnbr95","mean_BA_red","BA_red95","cause","size")
-length(data_s1$lon)
-data_s1$mean_ros =as.numeric(as.character(data_s1$mean_ros))
-data_s1$ros95 =as.numeric(as.character(data_s1$ros95))
-data_s1$mean_dnbr =as.numeric(as.character(data_s1$mean_dnbr))
-data_s1$dnbr95 =as.numeric(as.character(data_s1$dnbr95))
-data_s1$mean_rdnbr =as.numeric(as.character(data_s1$mean_rdnbr))
-data_s1$rdnbr95 =as.numeric(as.character(data_s1$rdnbr95))
-data_s1$lon =as.numeric(as.character(data_s1$lon))
-data_s1$lat =as.numeric(as.character(data_s1$lat))
-
-data_s1$mean_land[is.na(data_s1$mean_land)]=data_s1$max_land[is.na(data_s1$mean_land)] #mean landcover gives NA when only one landcover is present
-data_s1$mean_land =as.numeric(as.character(data_s1$mean_land))
-data_s1$mean_BA_red =as.numeric(as.character(data_s1$mean_BA_red))
-data_s1$BA_red95 =as.numeric(as.character(data_s1$BA_red95))
-data_s1$biomass =as.numeric(as.character(data_s1$biomass))
-data_s1$elevation =as.numeric(as.character(data_s1$elevation))
-data_s1$cause =as.numeric(as.character(data_s1$cause))
-data_s1$size =as.numeric(as.character(data_s1$size))
-
-
-data_s1=na.omit(data_s1)
-
-shape = shapefile("/Users/stijnhantson/Documents/data/veg_california/ca_eco_l3/ca_eco_l3.shp")
-pts <- SpatialPoints(data_s1[,c("lon","lat")],P4S.latlon)
-shape = spTransform(shape,P4S.latlon)
-eco = over(pts, shape)
-data_s1$L1CODE = eco$NA_L1CODE
-data_s1$L3name = eco$US_L3NAME
-data_s1$L1CODE =as.numeric(as.character(data_s1$L1CODE))
-
-#data_s1$log_ros = log10(data_s1$mean_ros)
-#data_s1$log_ros95 = log10(data_s1$ros95)
-#data_s1 = data_s1[data_s1$mean_ros >0,]
-data_s1$human[data_s1$cause !=1 & data_s1$cause !=14 & data_s1$cause !=17]=1
-data_s1$human[data_s1$cause ==1 ]=2
-
-data_s1$ros_km = (data_s1$ros95 *24)/1000
-data_test = data_s1[data_s1$max_land == 1,]
-data_test1 = data_s1[data_s1$L1CODE == 6 |data_s1$L1CODE == 7 ,]
-data_test2 = data_s1[data_s1$L1CODE == 11,]
-
-data_test1 = data_s1[data_s1$human == 1 & (data_s1$L1CODE == 6 |data_s1$L1CODE == 7),]
-data_test2 = data_s1[data_s1$human == 2 & (data_s1$L1CODE == 6 |data_s1$L1CODE == 7),]
-
-data_test1 = data_s1[data_s1$human == 1 ,]
-data_test2 = data_s1[data_s1$human == 2 ,]
-
-data_test1=na.omit(data_test1)
-data_test2=na.omit(data_test2)
-
-
-
-plot(data_s1$ros_km, data_s1$mean_BA_red,log="x",xlab="Rate-of-Spread (km/day)",ylab="Tree mortality (%)",xlim=c(0.005,30),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, col="black")
-#axis(1,at=marks,labels=marks,cex.axis=1.4 )
-points(data_test2$ros_km, data_test2$mean_BA_red,cex=0.8, col="darkgrey")
-points(data_test1$ros_km, data_test1$mean_BA_red,cex=0.8, col="orange")
-
-
-marks=c(0.01,0.1,1,10)
-tiff("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_basa_ros_all_v3.tif", width = 5, height = 5, units = 'in', res = 300)
-plot(data_s1$ros_km, data_s1$mean_BA_red,log="x",xlab="Rate-of-Spread (km/day)",ylab="Tree mortality (%)",xlim=c(0.005,30),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, col="black")
-axis(1,at=marks,labels=marks,cex.axis=1.4 )
-points(data_test2$ros_km, data_test2$mean_BA_red,cex=0.8, col="darkgrey")
-points(data_test1$ros_km, data_test1$mean_BA_red,cex=0.8, col="orange")
-lines(lowess(data_s1$ros_km, data_s1$mean_BA_red, f=0.41),col="black", lwd=3)
-lines(lowess(data_test1$ros_km, data_test1$mean_BA_red, f=0.41),col="darkgoldenrod3", lwd=3)
-lines(lowess(data_test2$ros_km, data_test2$mean_BA_red, f=0.41),col="gray40", lwd=3)
-legend("topleft",legend=c("all","human","lightning"),col = c("black","darkgoldenrod3", "gray40"),lty=1, bty="n",lwd = 3, cex=1)
-dev.off()
-
-
-
-data_test1 = data_s1[data_s1$human == 1 & data_s1$max_land <1.5,]
-data_test2 = data_s1[data_s1$human == 2 & data_s1$max_land <1.5,]
-data_forest = data_s1[data_s1$max_land <1.5,]
-data_test1=na.omit(data_test1)
-data_test2=na.omit(data_test2)
-
-data_s2 = data_s1[data_s1$ros_km <10,]
-data_forest_10 = data_s2[data_s2$max_land <1.5,]
-data_test1_10 = data_s2[data_s2$human == 1 & data_s2$max_land <1.5,]
-data_test2_10 = data_s2[data_s2$human == 2 & data_s2$max_land <1.5,]
-data_test1_10=na.omit(data_test1_10)
-data_test2_10=na.omit(data_test2_10)
-
-marks=c(0.01,0.1,1,10)
-pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_basa_ros_forest_v3.pdf", width = 5, height = 5)
-plot(data_forest$ros_km, data_forest$mean_BA_red,log="x",xlab="Rate-of-Spread (km/day)",ylab="Tree mortality (%)",xlim=c(0.005,30),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, col="black")
-axis(1,at=marks,labels=marks,cex.axis=1.4 )
-points(data_test2$ros_km, data_test2$mean_BA_red,cex=0.8, col="darkgrey")
-points(data_test1$ros_km, data_test1$mean_BA_red,cex=0.8, col="orange")
-lines(lowess(data_forest_10$ros_km, data_forest_10$mean_BA_red, f=0.41),col="black", lwd=3)
-lines(lowess(data_test1_10$ros_km, data_test1_10$mean_BA_red, f=0.41),col="darkgoldenrod3", lwd=3)
-lines(lowess(data_test2_10$ros_km, data_test2_10$mean_BA_red, f=0.41),col="gray40", lwd=3)
-legend("topleft",legend=c("all","human","lightning"),col = c("black","darkgoldenrod3", "gray40"),lty=1, bty="n",lwd = 3, cex=1)
-dev.off()
-
-marks=c(0.01,0.1,1,10)
-tiff("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_basa_ros_forest_v4.tif", width = 5, height = 5, units = 'in', res = 300)
-plot(data_forest$ros_km, data_forest$mean_BA_red,log="x",xlab="Rate-of-Spread (km/day)",ylab="Tree mortality (%)",xlim=c(0.1,15),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, col="black")
-axis(1,at=marks,labels=marks,cex.axis=1.4 )
-points(data_test2$ros_km, data_test2$mean_BA_red,cex=0.8, col="darkgrey")
-points(data_test1$ros_km, data_test1$mean_BA_red,cex=0.8, col="orange")
-lines(lowess(data_forest_10$ros_km, data_forest_10$mean_BA_red, f=0.41),col="black", lwd=3)
-lines(lowess(data_test1_10$ros_km, data_test1_10$mean_BA_red, f=0.41),col="darkgoldenrod3", lwd=3)
-lines(lowess(data_test2_10$ros_km, data_test2_10$mean_BA_red, f=0.41),col="gray40", lwd=3)
-legend("topleft",legend=c("all","human","lightning"),col = c("black","darkgoldenrod3", "gray40"),lty=1, bty="n",lwd = 3, cex=1)
-dev.off()
-
-
-plot(data_forest$ros_km, data_forest$mean_BA_red,log="x",xlab="Rate-of-Spread (km/day)",ylab="Tree mortality (%)",xlim=c(0.1,15),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, col="black")
-axis(1,at=marks,labels=marks,cex.axis=1.4 )
-points(data_test2$ros_km, data_test2$mean_BA_red,cex=0.8, col="darkgrey")
-points(data_test1$ros_km, data_test1$mean_BA_red,cex=0.8, col="orange")
-lines(lowess(data_forest_10$ros_km, data_forest_10$mean_BA_red, f=0.41),col="black", lwd=3)
-lines(lowess(data_test1_10$ros_km, data_test1_10$mean_BA_red, f=0.41),col="darkgoldenrod3", lwd=3)
-lines(lowess(data_test2_10$ros_km, data_test2_10$mean_BA_red, f=0.41),col="gray40", lwd=3)
-legend("topleft",legend=c("all","human","lightning"),col = c("black","darkgoldenrod3", "gray40"),lty=1, bty="n",lwd = 3, cex=1)
-
-data_test = data_s1[data_s1$max_land == 1,]
-
-marks=c(0.01,0.1,1,10)
-pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_dNBR_ros_all_v2.pdf", width = 5, height = 5)
-plot(data_s1$ros_km, data_s1$mean_dnbr,log="x",xlab="Rate-of-Spread (km/day)",ylab="dNBR",xlim=c(0.005,30),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, ylim=c(0,600))
-axis(1,at=marks,labels=marks,cex.axis=1.4 )
-#lines(lowess(data_test$ros95, data_test$mean_BA_red, f=0.41),col="black", lwd=3)
-dev.off()
-
-marks=c(0.01,0.1,1,10)
-pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_rdNBR_ros_all_v2.pdf", width = 5, height = 5)
-plot(data_s1$ros_km, data_s1$mean_rdnbr,log="x",xlab="Rate-of-Spread (km/day)",ylab="rdNBR",xlim=c(0.005,30),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, ylim=c(0,600))
-axis(1,at=marks,labels=marks,cex.axis=1.4 )
-#lines(lowess(data_test$ros95, data_test$mean_BA_red, f=0.41),col="black", lwd=3)
-dev.off()
-
-
-marks=c(0.01,0.1,1,10)
-pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_dNBR_ros_north_v2.pdf", width = 5, height = 5)
-plot(data_test1$ros_km, data_test1$mean_dnbr,log="x",xlab="Rate-of-Spread (km/day)",ylab="dNBR",xlim=c(0.005,30),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, ylim=c(0,600))
-axis(1,at=marks,labels=marks,cex.axis=1.4 )
-#lines(lowess(data_test$ros95, data_test$mean_BA_red, f=0.41),col="black", lwd=3)
-dev.off()
-
-marks=c(0.01,0.1,1,10)
-pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/fig_dNBR_ros_south_v2.pdf", width = 5, height = 5)
-plot(data_test2$ros_km, data_test2$mean_dnbr,log="x",xlab="Rate-of-Spread (km/day)",ylab="dNBR",xlim=c(0.005,30),xaxt="n",cex.axis=1.4 ,cex.lab=1.4,cex=0.8, ylim=c(0,600))
-axis(1,at=marks,labels=marks,cex.axis=1.4 )
-#lines(lowess(data_test$ros95, data_test$mean_BA_red, f=0.41),col="black", lwd=3)
-dev.off()
-
-
-
-```
-
-
-```{r}
-
-data_test = data_s1[data_s1$max_land == 1,]
-data_test1 = data_s1[data_s1$L1CODE == 6 |data_s1$L1CODE == 7 ,]
-data_test2 = data_s1[data_s1$L1CODE == 11,]
-
-data_test1 = data_s1[data_s1$human == 1 & (data_s1$L1CODE == 6 |data_s1$L1CODE == 7),]
-data_test2 = data_s1[data_s1$human == 2 & (data_s1$L1CODE == 6 |data_s1$L1CODE == 7),]
-
-data_test1 = data_s1[data_s1$human == 1 ,]
-data_test2 = data_s1[data_s1$human == 2 ,]
-
-
-fast = data_s1[data_s1$ros_km > 1,]
-fast_hum = fast[fast$human == 1,]
-
-print("% BA and % of fire days fast fires > 1km/day")
-sum(fast$size)/sum(data_s1$size)
-length(fast$size)/length(data_s1$size)
-
-print("% BA  fast fires due to human ignition % of fire days human caused fast fires > 1km/day")
-sum(fast_hum$size, na.rm=T)/sum(fast$size)
-length(fast_hum$size)/length(fast$size)
-
-all_min1 = data_s1[data_s1$nr_day != 1,] # remove first fire spread day from statistics
-
-quan = quantile(data_s1$ros_km,0.9)
-fast = data_s1[data_s1$ros_km > quan,]
-slow = data_s1[data_s1$ros_km < quan,]
-fast_hum = fast[fast$human == 1,]
-
-print("fastest 10% fires cause xxx% of BA")
-sum(fast$size)/sum(all_min1$size)
-length(fast$size)/length(all_min1$size)
-print("mean tree mortality weighted by BA and just mean")
-sum((data_s1$mean_BA_red*data_s1$size))/(sum(data_s1$size))
-mean(data_s1$mean_BA_red)
-
-print("% BA due to human fires amoung fastest 10% fire days")
-sum(fast_hum$size, na.rm=T)/sum(fast$size)
-print("% fire number due to human fires amoung fastest 10% fire days")
-length(fast_hum$size)/length(fast$size)
-print("% tree mortality fast fires weighthed and not")
-sum((fast$mean_BA_red*fast$size))/(sum(fast$size))
-mean(fast$mean_BA_red)
-print("% tree mortality slow fires weighthed and not")
-sum((slow$mean_BA_red*slow$size))/(sum(slow$size))
-mean(slow$mean_BA_red)
-
-print("tree mortality <0.5km and >2km")
-fast1 = data_s1[data_s1$ros_km > 2,]
-slow1 = data_s1[data_s1$ros_km < 0.5,]
-mean(fast1$mean_BA_red,omit.na=T )
-mean(slow1$mean_BA_red,omit.na=T )
-
-# plot BA per rate of spread 
-out1 = subset(data_s1,cause == 1 )   #1=lightning; 14=unknown; 7=arson
-out2 = subset(data_s1,cause !=1 & cause != 14 )
-
-breaks =c(0,0.5,1,2,3,5,7,10,20,30)
-
-tt=0
-pp=0
-for (i in 1:9){
-
-  kr = out1[out1$ros_km >= breaks[i] & out1$ros_km < breaks[i+1],]
-  kp = out2[out2$ros_km >= breaks[i] & out2$ros_km < breaks[i+1],]
-
-tt[i]=sum(kr$size, na.rm=T)/1000000
-pp[i]= sum(kp$size, na.rm=T)/1000000
-}
-sum(tt)
-sum(pp)
-fg = rbind(tt,pp)
-
-par(mar=c(4, 5, 2,0.1))
-fr = barplot(fg, beside=TRUE,xlab="Rate-of-Spread (km/day)",ylab=expression('burnt area (km'^2*')'),ylim=c(0,2000),cex.lab=1.4,cex.axis = 1.3)
-axis(1,at=c(0.5,3.5,6.5,9.5,12.5,15.5,18.5,21.5,24.5,27.5),labels=hist.a$breaks,cex.axis = 1.3)
-legend("topright",legend = c("human","lightning"), fill=c("grey","black"),cex=1.4,bty = "n")
-
-
-tiff("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/BA_per_ros_hist.tif", width = 6, height = 5, units = 'in', res = 300)
-par(mar=c(4, 5, 2,0.1))
-fr = barplot(fg, beside=TRUE,xlab="Rate-of-Spread (km/day)",ylab=expression('burnt area (km'^2*')'),ylim=c(0,2000),cex.lab=1.4,cex.axis = 1.3)
-axis(1,at=c(0.5,3.5,6.5,9.5,12.5,15.5,18.5,21.5,24.5,27.5),labels=hist.a$breaks,cex.axis = 1.3)
-legend("topright",legend = c("human","lightning"), fill=c("grey","black"),cex=1.4,bty = "n")
+legend("topright",c("human","lightning"),fill = c("black","grey"), bty="n",cex=1.4)
+text(9,190,"b) Northern California",cex=1.7)
 dev.off() 
 
+ta = table(out2$human,out2$mont)
 
+pdf("/Users/stijnhantson/Documents/Documents/articulos/en_proceso/VIIRS_ros/S9c_v1.pdf", width = 7, height = 6)
+ps = barplot(ta, beside=TRUE, ylab="Number of fires",xpd=T,xaxt='n',xlab= "Month", ylim=c(0,200), axis.lty=1,cex.lab = 1.5,cex.axis = 1.4 )
+axis(1,at=c(2,5,8,11,14,17,20,23,26,29,32,35), labels =c(1:12),xlim=c(0,36),xpd=F,cex.lab = 1.4,cex.axis = 1.3 )
+legend("topright",c("human","lightning"),fill = c("black", "grey"), bty="n",cex=1.4)
+text(11.2,190,"c) Mediterranean California",cex=1.7)
+dev.off() 
+
+ps = barplot(ta, beside=TRUE, ylab="Number of fires",xpd=T,xaxt='n',xlab= "Month", ylim=c(0,200), axis.lty=1,cex.lab = 1.5,cex.axis = 1.4 )
+axis(1,at=c(2,5,8,11,14,17,20,23,26,29,32,35), labels =c(1:12),xlim=c(0,36),xpd=F,cex.lab = 1.4,cex.axis = 1.3 )
+legend("topright",c("human","lightning"),fill = c("black", "grey"), bty="n",cex=1.4)
 
 
 ```
-
 
 
 ############  analysis of MTBS temporal trend   ###############
